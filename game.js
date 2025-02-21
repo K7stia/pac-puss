@@ -1,10 +1,10 @@
 const canvas = document.createElement("canvas");
 const ctx = canvas.getContext("2d");
 document.body.appendChild(canvas);
-canvas.width = 500;
-canvas.height = 500;
+canvas.width = 600;
+canvas.height = 600;
 
-const tileSize = 25;
+const tileSize = 30;
 const rows = canvas.height / tileSize;
 const cols = canvas.width / tileSize;
 
@@ -16,13 +16,14 @@ const ghosts = [
   { x: 15, y: 3, dirX: -1, dirY: 0, color: "pink" }
 ];
 
-const map = [
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1],
-  [1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-  [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1],
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-];
+const map = Array(rows).fill().map(() => Array(cols).fill(0));
+for (let i = 0; i < rows; i++) {
+  for (let j = 0; j < cols; j++) {
+    if (i === 0 || i === rows - 1 || j === 0 || j === cols - 1 || Math.random() < 0.2) {
+      map[i][j] = 1;
+    }
+  }
+}
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "ArrowUp") {
@@ -43,13 +44,8 @@ document.addEventListener("keydown", (event) => {
 function drawMap() {
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
-      if (map[y] && map[y][x] === 1) {
-        ctx.fillStyle = "blue";
-        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-      } else {
-        ctx.fillStyle = "black";
-        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-      }
+      ctx.fillStyle = map[y][x] === 1 ? "blue" : "black";
+      ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
     }
   }
 }
@@ -83,12 +79,6 @@ function drawGhosts() {
   });
 }
 
-function drawScore() {
-  ctx.fillStyle = "white";
-  ctx.font = "20px Arial";
-  ctx.fillText("Score: " + score, 10, 20);
-}
-
 function update() {
   let newX = pacman.x + pacman.dirX;
   let newY = pacman.y + pacman.dirY;
@@ -96,6 +86,24 @@ function update() {
     pacman.x = newX;
     pacman.y = newY;
   }
+  
+  ghosts.forEach(ghost => {
+    let possibleMoves = [
+      { dx: 1, dy: 0 },
+      { dx: -1, dy: 0 },
+      { dx: 0, dy: 1 },
+      { dx: 0, dy: -1 }
+    ].filter(move => {
+      let nx = ghost.x + move.dx;
+      let ny = ghost.y + move.dy;
+      return map[ny] && map[ny][nx] !== 1;
+    });
+    if (possibleMoves.length > 0) {
+      let move = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+      ghost.x += move.dx;
+      ghost.y += move.dy;
+    }
+  });
 }
 
 function gameLoop() {
@@ -103,7 +111,6 @@ function gameLoop() {
   drawMap();
   drawPacman();
   drawGhosts();
-  drawScore();
   update();
   requestAnimationFrame(gameLoop);
 }
