@@ -76,11 +76,13 @@ function drawGhosts() {
 function update() {
   let newX = pacman.x + pacman.dirX;
   let newY = pacman.y + pacman.dirY;
-  if (map[newY] && map[newY][newX] === 0) {
+  if (map[newY] && map[newY][newX] !== 1) {
     pacman.x = newX;
     pacman.y = newY;
-    map[newY][newX] = 2;
-    score++;
+    if (map[newY][newX] === 0) {
+      map[newY][newX] = 2;
+      score++;
+    }
   }
   pacman.mouthOpen = (pacman.mouthOpen + 1) % 2;
   
@@ -97,12 +99,6 @@ function update() {
   });
 }
 
-function drawScore() {
-  ctx.fillStyle = "white";
-  ctx.font = "20px Arial";
-  ctx.fillText("Score: " + score, 10, 20);
-}
-
 function gameLoop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawMap();
@@ -112,21 +108,5 @@ function gameLoop() {
   update();
   requestAnimationFrame(gameLoop);
 }
-
-document.addEventListener("keydown", (event) => {
-  if (event.key === "ArrowUp") {
-    pacman.dirX = 0;
-    pacman.dirY = -1;
-  } else if (event.key === "ArrowDown") {
-    pacman.dirX = 0;
-    pacman.dirY = 1;
-  } else if (event.key === "ArrowLeft") {
-    pacman.dirX = -1;
-    pacman.dirY = 0;
-  } else if (event.key === "ArrowRight") {
-    pacman.dirX = 1;
-    pacman.dirY = 0;
-  }
-});
 
 gameLoop();
