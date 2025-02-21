@@ -40,36 +40,65 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+function drawMap() {
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      if (map[y] && map[y][x] === 1) {
+        ctx.fillStyle = "blue";
+        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+      } else {
+        ctx.fillStyle = "black";
+        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+      }
+    }
+  }
+}
+
+function drawPacman() {
+  ctx.fillStyle = "yellow";
+  ctx.beginPath();
+  ctx.arc(
+    pacman.x * tileSize + tileSize / 2,
+    pacman.y * tileSize + tileSize / 2,
+    tileSize / 3,
+    0.2 * Math.PI,
+    1.8 * Math.PI
+  );
+  ctx.lineTo(pacman.x * tileSize + tileSize / 2, pacman.y * tileSize + tileSize / 2);
+  ctx.fill();
+}
+
+function drawGhosts() {
+  ghosts.forEach(ghost => {
+    ctx.fillStyle = ghost.color;
+    ctx.beginPath();
+    ctx.arc(
+      ghost.x * tileSize + tileSize / 2,
+      ghost.y * tileSize + tileSize / 2,
+      tileSize / 3,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  });
+}
+
+function drawScore() {
+  ctx.fillStyle = "white";
+  ctx.font = "20px Arial";
+  ctx.fillText("Score: " + score, 10, 20);
+}
+
 function update() {
-  console.log("Pac-Man position:", pacman.x, pacman.y);
   let newX = pacman.x + pacman.dirX;
   let newY = pacman.y + pacman.dirY;
   if (map[newY] && map[newY][newX] !== 1) {
     pacman.x = newX;
     pacman.y = newY;
-    if (map[newY][newX] === 0) {
-      map[newY][newX] = 2;
-      score++;
-    }
   }
-  pacman.mouthOpen = (pacman.mouthOpen + 1) % 2;
-  
-  ghosts.forEach(ghost => {
-    let newGX = ghost.x + ghost.dirX;
-    let newGY = ghost.y + ghost.dirY;
-    if (map[newGY] && map[newGY][newGX] !== 1) {
-      ghost.x = newGX;
-      ghost.y = newGY;
-    } else {
-      ghost.dirX *= -1;
-      ghost.dirY *= -1;
-    }
-  });
-  console.log("Ghost positions:", ghosts);
 }
 
 function gameLoop() {
-  console.log("Game is running");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawMap();
   drawPacman();
