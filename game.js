@@ -8,8 +8,6 @@ document.body.style.textAlign = 'center';
 const TILE_SIZE = 30;
 const PLAYER_SPEED = 2;
 const GHOST_SPEED = 1.5;
-let powerMode = false;
-let powerTimer = 0;
 
 const map = [
     '####################',
@@ -19,13 +17,13 @@ const map = [
     '#.#.##.#.#.#.#####.#',
     '#.#..#.#.#.#.....#.#',
     '#.####.#.#.#######.#',
-    '#......#.....O.....#',
+    '#......#...........#',
     '#.####.#.#########.#',
     '#....#.#.........#.#',
     '#.##.#.#.#######.#.#',
     '#..#.#.#.....#...#.#',
     '#.##.#.#####.#.###.#',
-    '#....O...#.....O...#',
+    '#........#.....#...#',
     '####################'
 ].map(row => row.split(''));
 
@@ -42,8 +40,8 @@ let player = {
 };
 
 let ghosts = [
-    { x: 18, y: 1, dx: -GHOST_SPEED, dy: 0, color: 'red', anim: 0, targetX: 1, targetY: 1, frightened: false },
-    { x: 18, y: 13, dx: -GHOST_SPEED, dy: 0, color: 'pink', anim: 0, targetX: 1, targetY: 1, frightened: false }
+    { x: 18, y: 1, dx: -GHOST_SPEED, dy: 0, color: 'red', anim: 0, targetX: 1, targetY: 1 },
+    { x: 18, y: 13, dx: -GHOST_SPEED, dy: 0, color: 'pink', anim: 0, targetX: 1, targetY: 1 }
 ];
 
 document.addEventListener('keydown', (e) => {
@@ -55,48 +53,126 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+function canMove(x, y, size = 0.9) {
+    const tileX = Math.floor(x);
+    const tileY = Math.floor(y);
+    return map[tileY] && 
+           map[tileY][tileX] !== '#' &&
+           map[Math.floor(y + size)][Math.floor(x + size)] !== '#' &&
+           map[Math.floor(y + size)][tileX] !== '#' &&
+           map[tileY][Math.floor(x + size)] !== '#';
+}
+
+function isCloseToAligned(pos) {
+    // Полегшене вирівнювання: поворот можливий, якщо відстань до цілого числа < 0.2
+    return Math.abs(pos - Math.round(pos)) < 0.2;
+}
+
 function update() {
+    // Оновлення гравця
     let newX = player.x + player.dx / TILE_SIZE;
     let newY = player.y + player.dy / TILE_SIZE;
-    if (map[Math.floor(newY)] && map[Math.floor(newY)][Math.floor(newX)] !== '#') {
+    
+    // Перевірка можливості повороту з полегшенням
+    if ((player.nextDx !== player.dx || player.nextDy !== player.dy) && 
+        isCloseToAligned(player.x) && isCloseToAligned(player.y)) {
+        const nextX = player.x + player.nextDx / TILE_SIZE;
+        const nextY = player.y + player.nextDy / TILE_SIZE;
+        if (canMove(nextX, nextY)) {
+            player.dx = player.nextDx;
+            player.dy = player.nextDy;
+            newX = nextX;
+            newY = nextY;
+        }
+    }
+    
+    if (canMove(newX, newY)) {
         player.x = newX;
         player.y = newY;
-        player.mouth = (player.mouth + 1) % 20;
-        if (map[Math.floor(newY)][Math.floor(newX)] === '.') {
-            map[Math.floor(newY)][Math.floor(newX)] = ' ';
-            player.score += 10;
-        } else if (map[Math.floor(newY)][Math.floor(newX)] === 'O') {
-            map[Math.floor(newY)][Math.floor(newX)] = ' ';
-            powerMode = true;
-            powerTimer = 300;
-            ghosts.forEach(g => g.frightened = true);
-        }
     }
     
-    if (powerMode) {
-        powerTimer--;
-        if (powerTimer <= 0) {
-            powerMode = false;
-            ghosts.forEach(g => g.frightened = false);
-        }
+    player.mouth = (player.mouth + 0.5) % 20;
+    
+    const tileX = Math.floor(player.x);
+    const tileY = Math.floor(player.y);
+    if (map[tileY][tileX] === '.') {
+        map[tileY][tileX] = ' ';
+        player.score += 10;
     }
     
+    // Оновлення привидів
     ghosts.forEach(ghost => {
-        if (Math.hypot(ghost.x - player.x, ghost.y - player.y) < 0.8) {
-            if (ghost.frightened) {
-                player.score += 200;
-                ghost.x = 18;
-                ghost.y = 1;
-            } else {
-                alert(`Game Over! Score: ${player.score}`);
-                location.reload();
+        ghost.anim = (ghost.anim + 0.3) % 10;
+        ghost.targetX = ghost.color === 'pink' ? 
+            player.x + player.dx * 2 / TILE_SIZE : player.x;
+        ghost.targetY = ghost.color === 'pink' ? 
+            player.y + player.dy * 2 / TILE_SIZE : player.y;
+        
+        const directions = [
+            { dx: GHOST_SPEED, dy: 0 },
+            { dx: -GHOST_SPEED, dy: 0 },
+            { dx: 0, dy: GHOST_SPEED },
+            { dx: 0, dy: -GHOST_SPEED }
+        ];
+        
+        let validDirs = directions.filter(dir => 
+            canMove(ghost.x + dir.dx / TILE_SIZE, ghost.y + dir.dy / TILE_SIZE)
+        );
+        
+        // Перевірка можливості повороту для привидів з полегшенням
+        if (validDirs.length > 0 && isCloseToAligned(ghost.x) && isCloseToAligned(ghost.y)) {
+            let bestDir = validDirs[0];
+            let minDist = Infinity;
+            
+            validDirs.forEach(dir => {
+                const nextX = ghost.x + dir.dx / TILE_SIZE;
+                const nextY = ghost.y + dir.dy / TILE_SIZE;
+                const dist = Math.hypot(nextX - ghost.targetX, nextY - ghost.targetY);
+                if (dist < minDist) {
+                    minDist = dist;
+                    bestDir = dir;
+                }
+            });
+            
+            if (Math.random() < 0.2 && validDirs.length > 1) {
+                bestDir = validDirs[Math.floor(Math.random() * validDirs.length)];
             }
+            
+            ghost.dx = bestDir.dx;
+            ghost.dy = bestDir.dy;
+        }
+        
+        const nextX = ghost.x + ghost.dx / TILE_SIZE;
+        const nextY = ghost.y + ghost.dy / TILE_SIZE;
+        if (canMove(nextX, nextY)) {
+            ghost.x = nextX;
+            ghost.y = nextY;
+        } else {
+            ghost.dx = 0;
+            ghost.dy = 0;
+        }
+        
+        if (Math.hypot(ghost.x - player.x, ghost.y - player.y) < 0.8) {
+            alert(`Game Over! Score: ${player.score}`);
+            player.x = 1;
+            player.y = 1;
+            player.dx = 0;
+            player.dy = 0;
+            player.nextDx = 0;
+            player.nextDy = 0;
+            player.score = 0;
+            ghosts = [
+                { x: 18, y: 1, dx: -GHOST_SPEED, dy: 0, color: 'red', anim: 0, targetX: 1, targetY: 1 },
+                { x: 18, y: 13, dx: -GHOST_SPEED, dy: 0, color: 'pink', anim: 0, targetX: 1, targetY: 1 }
+            ];
         }
     });
 }
 
 function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
     map.forEach((row, y) => {
         row.forEach((cell, x) => {
             if (cell === '#') {
@@ -107,25 +183,55 @@ function draw() {
                 ctx.beginPath();
                 ctx.arc(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 3, 0, Math.PI * 2);
                 ctx.fill();
-            } else if (cell === 'O') {
-                ctx.fillStyle = 'purple';
-                ctx.beginPath();
-                ctx.arc(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 8, 0, Math.PI * 2);
-                ctx.fill();
             }
         });
     });
-    ghosts.forEach(ghost => {
-        ctx.fillStyle = ghost.frightened ? 'blue' : ghost.color;
-        ctx.beginPath();
-        ctx.arc(ghost.x * TILE_SIZE + TILE_SIZE / 2, ghost.y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 2, 0, Math.PI * 2);
-        ctx.fill();
-    });
+    
     ctx.fillStyle = 'yellow';
     ctx.beginPath();
-    ctx.arc(player.x * TILE_SIZE + TILE_SIZE / 2, player.y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 2, 0.2 * Math.PI, 1.8 * Math.PI);
-    ctx.lineTo(player.x * TILE_SIZE + TILE_SIZE / 2, player.y * TILE_SIZE + TILE_SIZE / 2);
+    const playerX = player.x * TILE_SIZE + TILE_SIZE / 2;
+    const playerY = player.y * TILE_SIZE + TILE_SIZE / 2;
+    let startAngle, endAngle;
+    
+    switch(player.direction) {
+        case 0: startAngle = player.mouth * 0.1; endAngle = -player.mouth * 0.1; break;
+        case 1: startAngle = Math.PI/2 + player.mouth * 0.1; endAngle = Math.PI/2 - player.mouth * 0.1; break;
+        case 2: startAngle = Math.PI + player.mouth * 0.1; endAngle = Math.PI - player.mouth * 0.1; break;
+        case 3: startAngle = -Math.PI/2 + player.mouth * 0.1; endAngle = -Math.PI/2 - player.mouth * 0.1; break;
+    }
+    
+    ctx.arc(playerX, playerY, TILE_SIZE / 2, startAngle, endAngle);
+    ctx.lineTo(playerX, playerY);
     ctx.fill();
+    
+    ghosts.forEach(ghost => {
+        const ghostX = ghost.x * TILE_SIZE + TILE_SIZE / 2;
+        const ghostY = ghost.y * TILE_SIZE + TILE_SIZE / 2;
+        
+        ctx.fillStyle = ghost.color;
+        ctx.beginPath();
+        ctx.arc(ghostX, ghostY, TILE_SIZE / 2, Math.PI, 0);
+        ctx.moveTo(ghostX - TILE_SIZE / 2, ghostY);
+        for (let i = 0; i <= TILE_SIZE; i += TILE_SIZE / 4) {
+            const yOffset = Math.sin(ghost.anim + i / 5) * 5;
+            ctx.lineTo(ghostX - TILE_SIZE / 2 + i, ghostY + TILE_SIZE / 2 + yOffset);
+        }
+        ctx.lineTo(ghostX + TILE_SIZE / 2, ghostY);
+        ctx.fill();
+        
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.arc(ghostX - TILE_SIZE / 6, ghostY - TILE_SIZE / 6, TILE_SIZE / 6, 0, Math.PI * 2);
+        ctx.arc(ghostX + TILE_SIZE / 6, ghostY - TILE_SIZE / 6, TILE_SIZE / 6, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        ctx.arc(ghostX - TILE_SIZE / 6, ghostY - TILE_SIZE / 6, TILE_SIZE / 12, 0, Math.PI * 2);
+        ctx.arc(ghostX + TILE_SIZE / 6, ghostY - TILE_SIZE / 6, TILE_SIZE / 12, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    
     ctx.fillStyle = 'white';
     ctx.font = '20px Arial';
     ctx.fillText(`Score: ${player.score}`, 10, 20);
@@ -136,4 +242,5 @@ function gameLoop() {
     draw();
     requestAnimationFrame(gameLoop);
 }
+
 gameLoop();
