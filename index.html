@@ -3,31 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PAC-PUSS</title>
+    <title>Pac-Puss</title>
     <style>
         body {
-            background-color: black;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
             margin: 0;
+            background-color: black;
+            color: white;
+            font-family: Arial, sans-serif;
         }
         canvas {
-            border: 3px solid white;
-        }
-        #score {
-            color: white;
-            font-size: 24px;
-            margin-bottom: 10px;
+            border: 2px solid white;
         }
     </style>
 </head>
 <body>
-    <div id="score">Score: 0</div>
-    <canvas id="gameCanvas" width="600" height="600"></canvas>
-
+    <h1>Pac-Puss</h1>
     <script src="game.js"></script>
 </body>
 </html>
