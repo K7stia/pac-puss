@@ -5,16 +5,6 @@ canvas.width = 600;
 canvas.height = 600;
 
 const tileSize = 30;
-const rows = map.length;
-const cols = map[0].length;
-
-let pacman = { x: 1, y: 1, dirX: 0, dirY: 0, mouthOpen: 0, nextMove: null };
-let score = 0;
-
-const ghosts = [
-  { x: 10, y: 1, dirX: 1, dirY: 0, color: "red", moveDelay: 0 },
-  { x: 15, y: 3, dirX: -1, dirY: 0, color: "pink", moveDelay: 0 }
-];
 
 const map = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
@@ -28,6 +18,17 @@ const map = [
   [1,2,1,1,1,1,2,1,2,1,1,2,1,2,1,1,1,1,2,1],
   [1,2,2,2,2,2,2,1,2,2,2,2,1,2,2,2,2,2,2,1],
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+];
+
+const rows = map.length;
+const cols = map[0].length;
+
+let pacman = { x: 1, y: 1, dirX: 0, dirY: 0, mouthOpen: 0, nextMove: null };
+let score = 0;
+
+const ghosts = [
+  { x: 10, y: 1, dirX: 1, dirY: 0, color: "red", moveDelay: 0 },
+  { x: 15, y: 3, dirX: -1, dirY: 0, color: "pink", moveDelay: 0 }
 ];
 
 function drawMap() {
