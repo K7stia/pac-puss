@@ -238,11 +238,21 @@ function drawMap() {
 }
 
 function drawPlayer() {
+    // Основний код рота...
     ctx.fillStyle = 'yellow';
     ctx.beginPath();
-    const playerX = player.x * TILE_SIZE + TILE_SIZE / 2;
-    const playerY = player.y * TILE_SIZE + TILE_SIZE / 2;
-    let startAngle, endAngle;
+    ctx.arc(playerX, playerY, TILE_SIZE / 2, startAngle, endAngle);
+    ctx.lineTo(playerX, playerY);
+    ctx.fill();
+
+    // Додавання ока
+    ctx.fillStyle = 'black';
+    ctx.beginPath();
+    const eyeX = playerX + (TILE_SIZE / 4) * Math.cos(player.direction * Math.PI / 2);
+    const eyeY = playerY - (TILE_SIZE / 4) * Math.sin(player.direction * Math.PI / 2);
+    ctx.arc(eyeX, eyeY, TILE_SIZE / 8, 0, Math.PI * 2);
+    ctx.fill();
+
 
     switch (player.direction) {
         case 0: startAngle = player.mouth * 0.1; endAngle = -player.mouth * 0.1; break;
