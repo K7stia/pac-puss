@@ -35,7 +35,7 @@ document.addEventListener('keydown', (e) => {
 function update() {
     let newX = player.x + player.dx / TILE_SIZE;
     let newY = player.y + player.dy / TILE_SIZE;
-    if (map[Math.floor(newY)][Math.floor(newX)] !== '#') {
+    if (map[Math.floor(newY)] && map[Math.floor(newY)][Math.floor(newX)] !== '#') {
         player.x = newX;
         player.y = newY;
     }
@@ -43,7 +43,7 @@ function update() {
     ghosts.forEach(ghost => {
         let nextX = ghost.x + ghost.dx / TILE_SIZE;
         let nextY = ghost.y + ghost.dy / TILE_SIZE;
-        if (map[Math.floor(nextY)][Math.floor(nextX)] === '#') {
+        if (!map[Math.floor(nextY)] || !map[Math.floor(nextY)][Math.floor(nextX)] || map[Math.floor(nextY)][Math.floor(nextX)] === '#') {
             ghost.dx = -ghost.dx;
             ghost.dy = -ghost.dy;
         } else {
