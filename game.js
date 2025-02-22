@@ -243,44 +243,51 @@
             });
         }
 
-function drawPlayer() {
-    ctx.fillStyle = 'yellow';
-    ctx.beginPath();
-    const playerX = player.x * TILE_SIZE + TILE_SIZE / 2;
-    const playerY = player.y * TILE_SIZE + TILE_SIZE / 2;
-
-    const mouthAngle = Math.sin(player.mouth) * (Math.PI / 4); // Від 0 до π/4
-
-    let baseAngle;
-    switch (player.direction) {
-        case 0: baseAngle = 0; break;           // Вправо
-        case 1: baseAngle = Math.PI / 2; break; // Вниз
-        case 2: baseAngle = Math.PI; break;     // Вліво
-        case 3: baseAngle = 3 * Math.PI / 2; break; // Вгору
-    }
-
-    const startAngle = baseAngle + mouthAngle;
-    const endAngle = baseAngle - mouthAngle + 2 * Math.PI;
-
-    // Малюємо тіло Пакмена
-    ctx.arc(playerX, playerY, TILE_SIZE / 2, startAngle, endAngle);
-    ctx.lineTo(playerX, playerY);
-    ctx.fill();
-
-    // Додаємо зелену пов’язку на очі
-    ctx.fillStyle = 'green';
-    ctx.beginPath();
-    // Пов’язка як прямокутник через верхню частину (на рівні очей)
-    const bandWidth = TILE_SIZE * 0.8; // Ширина пов’язки
-    const bandHeight = TILE_SIZE * 0.2; // Висота пов’язки
-    const bandY = playerY - TILE_SIZE * 0.3; // Розташування трохи вище центру
-    ctx.fillRect(
-        playerX - bandWidth / 2, // Початок по X
-        bandY,                  // Початок по Y
-        bandWidth,              // Ширина
-        bandHeight              // Висота
-    );
-}
+        function drawPlayer() {
+            ctx.fillStyle = 'yellow';
+            ctx.beginPath();
+            const playerX = player.x * TILE_SIZE + TILE_SIZE / 2;
+            const playerY = player.y * TILE_SIZE + TILE_SIZE / 2;
+        
+            const mouthAngle = Math.sin(player.mouth) * (Math.PI / 4);
+        
+            let baseAngle;
+            switch (player.direction) {
+                case 0: baseAngle = 0; break;
+                case 1: baseAngle = Math.PI / 2; break;
+                case 2: baseAngle = Math.PI; break;
+                case 3: baseAngle = 3 * Math.PI / 2; break;
+            }
+        
+            const startAngle = baseAngle + mouthAngle;
+            const endAngle = baseAngle - mouthAngle + 2 * Math.PI;
+        
+            // Малюємо тіло Пакмена
+            ctx.arc(playerX, playerY, TILE_SIZE / 2, startAngle, endAngle);
+            ctx.lineTo(playerX, playerY);
+            ctx.fill();
+        
+            // Додаємо зелену пов’язку як дугу
+            ctx.fillStyle = 'green';
+            ctx.beginPath();
+            ctx.arc(
+                playerX, 
+                playerY, 
+                TILE_SIZE / 2, // Радіус такий же, як у Пакмена
+                Math.PI / 4,   // Початок дуги (45°)
+                3 * Math.PI / 4, // Кінець дуги (135°)
+                false          // Проти годинникової стрілки
+            );
+            ctx.arc(
+                playerX, 
+                playerY, 
+                TILE_SIZE / 3, // Менший внутрішній радіус для товщини пов’язки
+                3 * Math.PI / 4, 
+                Math.PI / 4, 
+                true           // За годинниковою стрілкою для закриття
+            );
+            ctx.fill();
+        }
 
         function drawGhosts() {
             ghosts.forEach(ghost => {
