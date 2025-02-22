@@ -47,7 +47,7 @@ let player = {
 let ghosts = [
     { x: 18, y: 1, dx: -GHOST_SPEED, dy: 0, color: 'red', anim: 0, targetX: 1, targetY: 1, stuckCounter: 0 },
     { x: 18, y: 13, dx: -GHOST_SPEED, dy: 0, color: 'pink', anim: 0, targetX: 1, targetY: 1, stuckCounter: 0 },
-    { x: 1, y: 18, dx: GHOST_SPEED, dy: 0, color: 'lime', anim: 0, targetX: 1, targetY: 1, stuckCounter: 0 }
+    { x: 2, y: 18, dx: GHOST_SPEED, dy: 0, color: 'lime', anim: 0, targetX: 1, targetY: 1, stuckCounter: 0 }
 ];
 
 let gameOver = false;
