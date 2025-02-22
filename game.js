@@ -44,7 +44,32 @@ let ghosts = [
     { x: 18, y: 13, dx: -GHOST_SPEED, dy: 0, color: 'pink', anim: 0, targetX: 1, targetY: 1 }
 ];
 
+let gameOver = false;
+
 document.addEventListener('keydown', (e) => {
+    if (gameOver) {
+        if (e.key === 'Enter') {
+            // Перезапуск гри після натискання Enter
+            gameOver = false;
+            player.x = 1;
+            player.y = 1;
+            player.dx = 0;
+            player.dy = 0;
+            player.nextDx = 0;
+            player.nextDy = 0;
+            player.score = 0;
+            ghosts = [
+                { x: 18, y: 1, dx: -GHOST_SPEED, dy: 0, color: 'red', anim: 0, targetX: 1, targetY: 1 },
+                { x: 18, y: 13, dx: -GHOST_SPEED, dy: 0, color: 'pink', anim: 0, targetX: 1, targetY: 1 }
+            ];
+            map.forEach((row, y) => {
+                row.forEach((cell, x) => {
+                    if (cell === ' ') map[y][x] = '.'; // Відновлення точок
+                });
+            });
+        }
+        return;
+    }
     switch(e.key) {
         case 'ArrowUp': player.nextDx = 0; player.nextDy = -PLAYER_SPEED; player.direction = 3; break;
         case 'ArrowDown': player.nextDx = 0; player.nextDy = PLAYER_SPEED; player.direction = 1; break;
@@ -64,16 +89,15 @@ function canMove(x, y, size = 0.9) {
 }
 
 function isCloseToAligned(pos) {
-    // Полегшене вирівнювання: поворот можливий, якщо відстань до цілого числа < 0.2
     return Math.abs(pos - Math.round(pos)) < 0.2;
 }
 
 function update() {
-    // Оновлення гравця
+    if (gameOver) return;
+
     let newX = player.x + player.dx / TILE_SIZE;
     let newY = player.y + player.dy / TILE_SIZE;
     
-    // Перевірка можливості повороту з полегшенням
     if ((player.nextDx !== player.dx || player.nextDy !== player.dy) && 
         isCloseToAligned(player.x) && isCloseToAligned(player.y)) {
         const nextX = player.x + player.nextDx / TILE_SIZE;
@@ -100,7 +124,6 @@ function update() {
         player.score += 10;
     }
     
-    // Оновлення привидів
     ghosts.forEach(ghost => {
         ghost.anim = (ghost.anim + 0.3) % 10;
         ghost.targetX = ghost.color === 'pink' ? 
@@ -119,7 +142,6 @@ function update() {
             canMove(ghost.x + dir.dx / TILE_SIZE, ghost.y + dir.dy / TILE_SIZE)
         );
         
-        // Перевірка можливості повороту для привидів з полегшенням
         if (validDirs.length > 0 && isCloseToAligned(ghost.x) && isCloseToAligned(ghost.y)) {
             let bestDir = validDirs[0];
             let minDist = Infinity;
@@ -153,18 +175,7 @@ function update() {
         }
         
         if (Math.hypot(ghost.x - player.x, ghost.y - player.y) < 0.8) {
-            alert(`Game Over! Score: ${player.score}`);
-            player.x = 1;
-            player.y = 1;
-            player.dx = 0;
-            player.dy = 0;
-            player.nextDx = 0;
-            player.nextDy = 0;
-            player.score = 0;
-            ghosts = [
-                { x: 18, y: 1, dx: -GHOST_SPEED, dy: 0, color: 'red', anim: 0, targetX: 1, targetY: 1 },
-                { x: 18, y: 13, dx: -GHOST_SPEED, dy: 0, color: 'pink', anim: 0, targetX: 1, targetY: 1 }
-            ];
+            gameOver = true;
         }
     });
 }
@@ -172,6 +183,24 @@ function update() {
 function draw() {
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    if (gameOver) {
+        // Екран завершення гри
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.fillStyle = 'white';
+        ctx.font = '60px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2 - 50);
+        
+        ctx.font = '40px Arial';
+        ctx.fillText(`Score: ${player.score}`, canvas.width / 2, canvas.height / 2 + 20);
+        
+        ctx.font = '20px Arial';
+        ctx.fillText('Press Enter to Restart', canvas.width / 2, canvas.height / 2 + 80);
+        return;
+    }
     
     map.forEach((row, y) => {
         row.forEach((cell, x) => {
@@ -234,6 +263,7 @@ function draw() {
     
     ctx.fillStyle = 'white';
     ctx.font = '20px Arial';
+    ctx.textAlign = 'left';
     ctx.fillText(`Score: ${player.score}`, 10, 20);
 }
 
