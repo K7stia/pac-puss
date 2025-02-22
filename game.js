@@ -5,8 +5,8 @@ canvas.width = 600;
 canvas.height = 600;
 
 const tileSize = 30;
-const rows = 20;
-const cols = 20;
+const rows = map.length;
+const cols = map[0].length;
 
 let pacman = { x: 1, y: 1, dirX: 0, dirY: 0, mouthOpen: 0, nextMove: null };
 let score = 0;
@@ -33,8 +33,10 @@ const map = [
 function drawMap() {
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
-      ctx.fillStyle = map[y][x] === 1 ? "blue" : "black";
-      ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+      if (map[y] && map[y][x] !== undefined) {
+        ctx.fillStyle = map[y][x] === 1 ? "blue" : "black";
+        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+      }
     }
   }
 }
