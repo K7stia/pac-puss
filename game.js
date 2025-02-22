@@ -6,7 +6,6 @@ canvas.height = 600;
 
 document.body.style.textAlign = 'center';
 const TILE_SIZE = 30;
-const MAP_SIZE = 20;
 const PLAYER_SPEED = 2;
 const GHOST_SPEED = 1.5;
 
@@ -22,8 +21,8 @@ const map = [
     '####################'
 ].map(row => row.split(''));
 
-let player = { x: 1, y: 1, dx: 0, dy: 0, score: 0 };
-let ghosts = [{ x: 10, y: 10, dx: 1, dy: 0 }];
+let player = { x: 1, y: 1, dx: 0, dy: 0, score: 0, mouth: 0 };
+let ghosts = [{ x: 10, y: 10, dx: GHOST_SPEED, dy: 0 }];
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowUp') { player.dx = 0; player.dy = -PLAYER_SPEED; }
@@ -38,8 +37,13 @@ function update() {
     if (map[Math.floor(newY)] && map[Math.floor(newY)][Math.floor(newX)] !== '#') {
         player.x = newX;
         player.y = newY;
+        player.mouth = (player.mouth + 1) % 20;
+        if (map[Math.floor(newY)][Math.floor(newX)] === '.') {
+            map[Math.floor(newY)][Math.floor(newX)] = ' ';
+            player.score += 10;
+        }
     }
-
+    
     ghosts.forEach(ghost => {
         let nextX = ghost.x + ghost.dx / TILE_SIZE;
         let nextY = ghost.y + ghost.dy / TILE_SIZE;
@@ -71,7 +75,7 @@ function draw() {
     
     ctx.fillStyle = 'yellow';
     ctx.beginPath();
-    ctx.arc(player.x * TILE_SIZE + TILE_SIZE / 2, player.y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 2, 0.2 * Math.PI, 1.8 * Math.PI);
+    ctx.arc(player.x * TILE_SIZE + TILE_SIZE / 2, player.y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 2, (player.mouth / 20) * Math.PI, (2 - player.mouth / 20) * Math.PI);
     ctx.lineTo(player.x * TILE_SIZE + TILE_SIZE / 2, player.y * TILE_SIZE + TILE_SIZE / 2);
     ctx.fill();
     
