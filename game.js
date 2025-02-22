@@ -244,11 +244,26 @@ function drawPlayer() {
     const playerY = player.y * TILE_SIZE + TILE_SIZE / 2;
     let startAngle, endAngle;
 
+    // Максимальний кут відкривання рота (45 градусів у кожну сторону)
+    const mouthAngle = Math.sin(player.mouth) * (Math.PI / 4); // Від 0 до π/4 (45°)
+
     switch (player.direction) {
-        case 0: startAngle = player.mouth * 0.1; endAngle = -player.mouth * 0.1; break;
-        case 1: startAngle = Math.PI / 2 + player.mouth * 0.1; endAngle = Math.PI / 2 - player.mouth * 0.1; break;
-        case 2: startAngle = Math.PI + player.mouth * 0.1; endAngle = Math.PI - player.mouth * 0.1; break;
-        case 3: startAngle = -Math.PI / 2 + player.mouth * 0.1; endAngle = -Math.PI / 2 - player.mouth * 0.1; break;
+        case 0: // Вправо
+            startAngle = mouthAngle;
+            endAngle = 2 * Math.PI - mouthAngle;
+            break;
+        case 1: // Вниз
+            startAngle = Math.PI / 2 + mouthAngle;
+            endAngle = Math.PI / 2 - mouthAngle + 2 * Math.PI;
+            break;
+        case 2: // Вліво
+            startAngle = Math.PI + mouthAngle;
+            endAngle = Math.PI - mouthAngle;
+            break;
+        case 3: // Вгору
+            startAngle = 3 * Math.PI / 2 + mouthAngle;
+            endAngle = 3 * Math.PI / 2 - mouthAngle;
+            break;
     }
 
     ctx.arc(playerX, playerY, TILE_SIZE / 2, startAngle, endAngle);
