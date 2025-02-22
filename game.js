@@ -9,7 +9,6 @@ const TILE_SIZE = 30;
 const PLAYER_SPEED = 2;
 const GHOST_SPEED = 1.5;
 
-// Карта з виправленими розмірами для відповідності canvas
 const map = [
     '####################',
     '#........#.........#',
@@ -35,64 +34,53 @@ let player = {
     dy: 0, 
     score: 0, 
     mouth: 0,
-    direction: 0 // 0: right, 1: down, 2: left, 3: up
+    direction: 0
 };
 
 let ghosts = [
-    { x: 18, y: 1, dx: -GHOST_SPEED, dy: 0, color: 'red' },
-    { x: 18, y: 13, dx: -GHOST_SPEED, dy: 0, color: 'pink' }
+    { x: 18, y: 1, dx: -GHOST_SPEED, dy: 0, color: 'red', anim: 0 },
+    { x: 18, y: 13, dx: -GHOST_SPEED, dy: 0, color: 'pink', anim: 0 }
 ];
 
 document.addEventListener('keydown', (e) => {
     switch(e.key) {
-        case 'ArrowUp': 
-            player.dx = 0; 
-            player.dy = -PLAYER_SPEED; 
-            player.direction = 3;
-            break;
-        case 'ArrowDown': 
-            player.dx = 0; 
-            player.dy = PLAYER_SPEED; 
-            player.direction = 1;
-            break;
-        case 'ArrowLeft': 
-            player.dx = -PLAYER_SPEED; 
-            player.dy = 0; 
-            player.direction = 2;
-            break;
-        case 'ArrowRight': 
-            player.dx = PLAYER_SPEED; 
-            player.dy = 0; 
-            player.direction = 0;
-            break;
+        case 'ArrowUp': player.dx = 0; player.dy = -PLAYER_SPEED; player.direction = 3; break;
+        case 'ArrowDown': player.dx = 0; player.dy = PLAYER_SPEED; player.direction = 1; break;
+        case 'ArrowLeft': player.dx = -PLAYER_SPEED; player.dy = 0; player.direction = 2; break;
+        case 'ArrowRight': player.dx = PLAYER_SPEED; player.dy = 0; player.direction = 0; break;
     }
 });
 
-function canMove(x, y) {
+function canMove(x, y, size = 0.8) {
     const tileX = Math.floor(x);
     const tileY = Math.floor(y);
-    // Перевіряємо всі кути об'єкта
     return map[tileY] && 
            map[tileY][tileX] !== '#' &&
-           map[Math.floor(y + 0.9)][Math.floor(x + 0.9)] !== '#' &&
-           map[Math.floor(y + 0.9)][tileX] !== '#' &&
-           map[tileY][Math.floor(x + 0.9)] !== '#';
+           map[Math.floor(y + size)][Math.floor(x + size)] !== '#' &&
+           map[Math.floor(y + size)][tileX] !== '#' &&
+           map[tileY][Math.floor(x + size)] !== '#';
+}
+
+function alignToGrid(pos) {
+    // Вирівнювання до найближчої сітки
+    return Math.round(pos * 10) / 10;
 }
 
 function update() {
-    // Оновлення гравця
+    // Оновлення гравця з вирівнюванням
     let newX = player.x + player.dx / TILE_SIZE;
     let newY = player.y + player.dy / TILE_SIZE;
+    
+    if (player.dx !== 0) newY = alignToGrid(player.y);
+    if (player.dy !== 0) newX = alignToGrid(player.x);
     
     if (canMove(newX, newY)) {
         player.x = newX;
         player.y = newY;
     }
     
-    // Анімація рота
     player.mouth = (player.mouth + 0.5) % 20;
     
-    // Збирання точок
     const tileX = Math.floor(player.x);
     const tileY = Math.floor(player.y);
     if (map[tileY][tileX] === '.') {
@@ -100,8 +88,10 @@ function update() {
         player.score += 10;
     }
     
-    // Оновлення привидів з розумнішим рухом
+    // Оновлення привидів
     ghosts.forEach(ghost => {
+        ghost.anim = (ghost.anim + 0.3) % 10;
+        
         const directions = [
             { dx: GHOST_SPEED, dy: 0 },
             { dx: -GHOST_SPEED, dy: 0 },
@@ -109,39 +99,44 @@ function update() {
             { dx: 0, dy: -GHOST_SPEED }
         ];
         
-        let bestDir = null;
-        let minDist = Infinity;
+        let validDirs = directions.filter(dir => 
+            canMove(ghost.x + dir.dx / TILE_SIZE, ghost.y + dir.dy / TILE_SIZE)
+        );
         
-        directions.forEach(dir => {
-            const nextX = ghost.x + dir.dx / TILE_SIZE;
-            const nextY = ghost.y + dir.dy / TILE_SIZE;
-            if (canMove(nextX, nextY)) {
+        if (validDirs.length === 0) {
+            ghost.dx = -ghost.dx;
+            ghost.dy = -ghost.dy;
+        } else {
+            let bestDir = null;
+            let minDist = Infinity;
+            
+            validDirs.forEach(dir => {
+                const nextX = ghost.x + dir.dx / TILE_SIZE;
+                const nextY = ghost.y + dir.dy / TILE_SIZE;
                 const dist = Math.hypot(nextX - player.x, nextY - player.y);
                 if (dist < minDist) {
                     minDist = dist;
                     bestDir = dir;
                 }
-            }
-        });
-        
-        // 30% шанс випадкового руху
-        if (Math.random() < 0.3) {
-            const validDirs = directions.filter(dir => 
-                canMove(ghost.x + dir.dx / TILE_SIZE, ghost.y + dir.dy / TILE_SIZE)
-            );
-            if (validDirs.length > 0) {
+            });
+            
+            if (Math.random() < 0.3 && validDirs.length > 1) {
                 bestDir = validDirs[Math.floor(Math.random() * validDirs.length)];
             }
+            
+            if (bestDir) {
+                ghost.dx = bestDir.dx;
+                ghost.dy = bestDir.dy;
+            }
+            
+            const nextX = ghost.x + ghost.dx / TILE_SIZE;
+            const nextY = ghost.y + ghost.dy / TILE_SIZE;
+            if (canMove(nextX, nextY)) {
+                ghost.x = nextX;
+                ghost.y = nextY;
+            }
         }
         
-        if (bestDir) {
-            ghost.dx = bestDir.dx;
-            ghost.dy = bestDir.dy;
-            ghost.x += ghost.dx / TILE_SIZE;
-            ghost.y += ghost.dy / TILE_SIZE;
-        }
-        
-        // Перевірка зіткнення
         if (Math.hypot(ghost.x - player.x, ghost.y - player.y) < 0.8) {
             alert(`Game Over! Score: ${player.score}`);
             player.x = 1;
@@ -150,8 +145,8 @@ function update() {
             player.dy = 0;
             player.score = 0;
             ghosts = [
-                { x: 18, y: 1, dx: -GHOST_SPEED, dy: 0, color: 'red' },
-                { x: 18, y: 13, dx: -GHOST_SPEED, dy: 0, color: 'pink' }
+                { x: 18, y: 1, dx: -GHOST_SPEED, dy: 0, color: 'red', anim: 0 },
+                { x: 18, y: 13, dx: -GHOST_SPEED, dy: 0, color: 'pink', anim: 0 }
             ];
         }
     });
@@ -161,7 +156,6 @@ function draw() {
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Малювання карти
     map.forEach((row, y) => {
         row.forEach((cell, x) => {
             if (cell === '#') {
@@ -176,7 +170,6 @@ function draw() {
         });
     });
     
-    // Малювання гравця з напрямком рота
     ctx.fillStyle = 'yellow';
     ctx.beginPath();
     const playerX = player.x * TILE_SIZE + TILE_SIZE / 2;
@@ -184,39 +177,50 @@ function draw() {
     let startAngle, endAngle;
     
     switch(player.direction) {
-        case 0: // right
-            startAngle = player.mouth * 0.1;
-            endAngle = -player.mouth * 0.1;
-            break;
-        case 1: // down
-            startAngle = Math.PI/2 + player.mouth * 0.1;
-            endAngle = Math.PI/2 - player.mouth * 0.1;
-            break;
-        case 2: // left
-            startAngle = Math.PI + player.mouth * 0.1;
-            endAngle = Math.PI - player.mouth * 0.1;
-            break;
-        case 3: // up
-            startAngle = -Math.PI/2 + player.mouth * 0.1;
-            endAngle = -Math.PI/2 - player.mouth * 0.1;
-            break;
+        case 0: startAngle = player.mouth * 0.1; endAngle = -player.mouth * 0.1; break;
+        case 1: startAngle = Math.PI/2 + player.mouth * 0.1; endAngle = Math.PI/2 - player.mouth * 0.1; break;
+        case 2: startAngle = Math.PI + player.mouth * 0.1; endAngle = Math.PI - player.mouth * 0.1; break;
+        case 3: startAngle = -Math.PI/2 + player.mouth * 0.1; endAngle = -Math.PI/2 - player.mouth * 0.1; break;
     }
     
     ctx.arc(playerX, playerY, TILE_SIZE / 2, startAngle, endAngle);
     ctx.lineTo(playerX, playerY);
     ctx.fill();
     
-    // Малювання привидів
+    // Малювання привидів з анімацією
     ghosts.forEach(ghost => {
+        const ghostX = ghost.x * TILE_SIZE + TILE_SIZE / 2;
+        const ghostY = ghost.y * TILE_SIZE + TILE_SIZE / 2;
+        
         ctx.fillStyle = ghost.color;
         ctx.beginPath();
-        ctx.arc(ghost.x * TILE_SIZE + TILE_SIZE / 2, 
-                ghost.y * TILE_SIZE + TILE_SIZE / 2, 
-                TILE_SIZE / 2, 0, Math.PI * 2);
+        
+        // Верхня частина (півколо)
+        ctx.arc(ghostX, ghostY, TILE_SIZE / 2, Math.PI, 0);
+        
+        // Нижня частина з хвилеподібною анімацією
+        ctx.moveTo(ghostX - TILE_SIZE / 2, ghostY);
+        for (let i = 0; i <= TILE_SIZE; i += TILE_SIZE / 4) {
+            const yOffset = Math.sin(ghost.anim + i / 5) * 5;
+            ctx.lineTo(ghostX - TILE_SIZE / 2 + i, ghostY + TILE_SIZE / 2 + yOffset);
+        }
+        ctx.lineTo(ghostX + TILE_SIZE / 2, ghostY);
+        ctx.fill();
+        
+        // Очі
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.arc(ghostX - TILE_SIZE / 6, ghostY - TILE_SIZE / 6, TILE_SIZE / 6, 0, Math.PI * 2);
+        ctx.arc(ghostX + TILE_SIZE / 6, ghostY - TILE_SIZE / 6, TILE_SIZE / 6, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        ctx.arc(ghostX - TILE_SIZE / 6, ghostY - TILE_SIZE / 6, TILE_SIZE / 12, 0, Math.PI * 2);
+        ctx.arc(ghostX + TILE_SIZE / 6, ghostY - TILE_SIZE / 6, TILE_SIZE / 12, 0, Math.PI * 2);
         ctx.fill();
     });
     
-    // Відображення рахунку
     ctx.fillStyle = 'white';
     ctx.font = '20px Arial';
     ctx.fillText(`Score: ${player.score}`, 10, 20);
