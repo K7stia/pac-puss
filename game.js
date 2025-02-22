@@ -261,9 +261,8 @@ function drawPlayer() {
         case 3: startAngle = -Math.PI / 2 + player.mouth * 0.1; endAngle = -Math.PI / 2 - player.mouth * 0.1; break;
     }
 
-    ctx.arc(playerX, playerY, TILE_SIZE / 2, startAngle, endAngle);
     ctx.lineTo(playerX, playerY);
-    ctx.fill();
+    
 }
 
 function drawGhosts() {
