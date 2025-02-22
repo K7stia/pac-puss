@@ -30,58 +30,24 @@ const map = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 ];
 
+function drawMap() {
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      ctx.fillStyle = map[y][x] === 1 ? "blue" : "black";
+      ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+    }
+  }
+}
+
 document.addEventListener("keydown", (event) => {
   if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
     pacman.nextMove = event.key;
   }
 });
 
-function movePacman() {
-  if (pacman.nextMove) {
-    let newX = pacman.x;
-    let newY = pacman.y;
-    if (pacman.nextMove === "ArrowUp") { newY--; }
-    else if (pacman.nextMove === "ArrowDown") { newY++; }
-    else if (pacman.nextMove === "ArrowLeft") { newX--; }
-    else if (pacman.nextMove === "ArrowRight") { newX++; }
-    
-    if (map[newY] && map[newY][newX] !== 1) {
-      pacman.x = newX;
-      pacman.y = newY;
-    }
-    pacman.nextMove = null;
-  }
-}
-
-function moveGhosts() {
-  ghosts.forEach(ghost => {
-    ghost.moveDelay++;
-    if (ghost.moveDelay % 20 !== 0) return;
-    
-    let possibleMoves = [
-      { dx: 1, dy: 0 },
-      { dx: -1, dy: 0 },
-      { dx: 0, dy: 1 },
-      { dx: 0, dy: -1 }
-    ].filter(move => {
-      let nx = ghost.x + move.dx;
-      let ny = ghost.y + move.dy;
-      return map[ny] && map[ny][nx] !== 1;
-    });
-    
-    if (possibleMoves.length > 0) {
-      let move = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
-      ghost.x += move.dx;
-      ghost.y += move.dy;
-    }
-  });
-}
-
 function gameLoop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawMap();
-  movePacman();
-  moveGhosts();
   requestAnimationFrame(gameLoop);
 }
 
