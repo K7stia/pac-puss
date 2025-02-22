@@ -15,12 +15,12 @@ const map = [
     '#.#.#.##.#...#.###.#',
     '#.#.#....##..#.#...#',
     '#.#.##.#.#.#.#.#.###',
-    '#.#....#.#..##...#.#', // 
-    '#.####.#.#...#.###.#', // 
-    '#..........#.......#', // 
-    '######.#.#.###.#####', //     
-    '#....#.#.#.#...#...#', //
-    '#.####.#.#.###.###.#', //
+    '#.#....#.#..##...#.#',
+    '#.####.#.#...#.###.#',
+    '#..........#.......#',
+    '######.#.#.###.#####',
+    '#....#.#.#.#...#...#',
+    '#.####.#.#.###.###.#',
     '#.#....#.#...#...#.#',
     '#.#.##.###.###.###.#',
     '#....#.............#',
@@ -45,8 +45,9 @@ let player = {
 };
 
 let ghosts = [
-    { x: 18, y: 1, dx: -GHOST_SPEED, dy: 0, color: 'red', anim: 0, targetX: 1, targetY: 1 },
-    { x: 18, y: 13, dx: -GHOST_SPEED, dy: 0, color: 'pink', anim: 0, targetX: 1, targetY: 1 }
+    { x: 18, y: 1, dx: -GHOST_SPEED, dy: 0, color: 'red', anim: 0, targetX: 1, targetY: 1, stuckCounter: 0 },
+    { x: 18, y: 13, dx: -GHOST_SPEED, dy: 0, color: 'pink', anim: 0, targetX: 1, targetY: 1, stuckCounter: 0 },
+    { x: 1, y: 18, dx: GHOST_SPEED, dy: 0, color: 'lime', anim: 0, targetX: 1, targetY: 1, stuckCounter: 0 }
 ];
 
 let gameOver = false;
@@ -54,7 +55,6 @@ let gameOver = false;
 document.addEventListener('keydown', (e) => {
     if (gameOver) {
         if (e.key === 'Enter') {
-            // Перезапуск гри після натискання Enter
             gameOver = false;
             player.x = 1;
             player.y = 1;
@@ -64,12 +64,13 @@ document.addEventListener('keydown', (e) => {
             player.nextDy = 0;
             player.score = 0;
             ghosts = [
-                { x: 18, y: 1, dx: -GHOST_SPEED, dy: 0, color: 'red', anim: 0, targetX: 1, targetY: 1 },
-                { x: 18, y: 13, dx: -GHOST_SPEED, dy: 0, color: 'pink', anim: 0, targetX: 1, targetY: 1 }
+                { x: 18, y: 1, dx: -GHOST_SPEED, dy: 0, color: 'red', anim: 0, targetX: 1, targetY: 1, stuckCounter: 0 },
+                { x: 18, y: 13, dx: -GHOST_SPEED, dy: 0, color: 'pink', anim: 0, targetX: 1, targetY: 1, stuckCounter: 0 },
+                { x: 1, y: 18, dx: GHOST_SPEED, dy: 0, color: 'lime', anim: 0, targetX: 1, targetY: 1, stuckCounter: 0 }
             ];
             map.forEach((row, y) => {
                 row.forEach((cell, x) => {
-                    if (cell === ' ') map[y][x] = '.'; // Відновлення точок
+                    if (cell === ' ') map[y][x] = '.';
                 });
             });
         }
@@ -131,10 +132,17 @@ function update() {
     
     ghosts.forEach(ghost => {
         ghost.anim = (ghost.anim + 0.3) % 10;
-        ghost.targetX = ghost.color === 'pink' ? 
-            player.x + player.dx * 2 / TILE_SIZE : player.x;
-        ghost.targetY = ghost.color === 'pink' ? 
-            player.y + player.dy * 2 / TILE_SIZE : player.y;
+        
+        if (ghost.color === 'red') {
+            ghost.targetX = player.x;
+            ghost.targetY = player.y;
+        } else if (ghost.color === 'pink') {
+            ghost.targetX = player.x + player.dx * 2 / TILE_SIZE;
+            ghost.targetY = player.y + player.dy * 2 / TILE_SIZE;
+        } else { // lime ghost
+            ghost.targetX = player.x - player.dx * 2 / TILE_SIZE;
+            ghost.targetY = player.y - player.dy * 2 / TILE_SIZE;
+        }
         
         const directions = [
             { dx: GHOST_SPEED, dy: 0 },
@@ -147,21 +155,42 @@ function update() {
             canMove(ghost.x + dir.dx / TILE_SIZE, ghost.y + dir.dy / TILE_SIZE)
         );
         
-        if (validDirs.length > 0 && isCloseToAligned(ghost.x) && isCloseToAligned(ghost.y)) {
+        const nextX = ghost.x + ghost.dx / TILE_SIZE;
+        const nextY = ghost.y + ghost.dy / TILE_SIZE;
+        const isMoving = canMove(nextX, nextY);
+        
+        if (!isMoving) {
+            ghost.stuckCounter++;
+        } else {
+            ghost.stuckCounter = 0;
+        }
+        
+        if (validDirs.length > 0 && 
+            (isCloseToAligned(ghost.x) && isCloseToAligned(ghost.y) || ghost.stuckCounter > 10)) {
+            
             let bestDir = validDirs[0];
             let minDist = Infinity;
+            let currentDir = { dx: ghost.dx, dy: ghost.dy };
+            
+            validDirs = validDirs.filter(dir => 
+                !(dir.dx === -ghost.dx && dir.dy === -ghost.dy) || validDirs.length === 1
+            );
             
             validDirs.forEach(dir => {
                 const nextX = ghost.x + dir.dx / TILE_SIZE;
                 const nextY = ghost.y + dir.dy / TILE_SIZE;
                 const dist = Math.hypot(nextX - ghost.targetX, nextY - ghost.targetY);
-                if (dist < minDist) {
-                    minDist = dist;
+                const stuckPenalty = ghost.stuckCounter > 10 && 
+                    dir.dx === currentDir.dx && dir.dy === currentDir.dy ? 100 : 0;
+                
+                if (dist + stuckPenalty < minDist) {
+                    minDist = dist + stuckPenalty;
                     bestDir = dir;
                 }
             });
             
-            if (Math.random() < 0.2 && validDirs.length > 1) {
+            const randomChance = ghost.stuckCounter > 10 ? 0.5 : 0.2;
+            if (Math.random() < randomChance && validDirs.length > 1) {
                 bestDir = validDirs[Math.floor(Math.random() * validDirs.length)];
             }
             
@@ -169,14 +198,14 @@ function update() {
             ghost.dy = bestDir.dy;
         }
         
-        const nextX = ghost.x + ghost.dx / TILE_SIZE;
-        const nextY = ghost.y + ghost.dy / TILE_SIZE;
-        if (canMove(nextX, nextY)) {
+        if (isMoving) {
             ghost.x = nextX;
             ghost.y = nextY;
-        } else {
-            ghost.dx = 0;
-            ghost.dy = 0;
+        } else if (ghost.stuckCounter > 20) {
+            const randomDir = validDirs[Math.floor(Math.random() * validDirs.length)];
+            ghost.dx = randomDir.dx;
+            ghost.dy = randomDir.dy;
+            ghost.stuckCounter = 0;
         }
         
         if (Math.hypot(ghost.x - player.x, ghost.y - player.y) < 0.8) {
@@ -190,7 +219,6 @@ function draw() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     if (gameOver) {
-        // Екран завершення гри
         ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
