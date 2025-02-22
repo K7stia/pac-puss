@@ -260,8 +260,6 @@ function drawPlayer() {
         case 2: startAngle = Math.PI + player.mouth * 0.1; endAngle = Math.PI - player.mouth * 0.1; break;
         case 3: startAngle = -Math.PI / 2 + player.mouth * 0.1; endAngle = -Math.PI / 2 - player.mouth * 0.1; break;
     }
-
-    ctx.lineTo(playerX, playerY);
     
 }
 
