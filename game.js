@@ -46,6 +46,7 @@ let player = { x: 1, y: 1, dx: 0, dy: 0, score: 0, mouth: 0, direction: 0, nextD
 let ghosts = [];
 let gameOver = false;
 let gameWon = false;
+let lastTime = performance.now();
 
 // Ініціалізація гри
 function resetGame() {
@@ -58,6 +59,7 @@ function resetGame() {
     map.forEach((row, y) => row.forEach((cell, x) => { if (cell === ' ') map[y][x] = '.'; }));
     gameOver = false;
     gameWon = false;
+    lastTime = performance.now();
 }
 
 // Управління гравцем
@@ -94,6 +96,10 @@ function isCloseToAligned(pos) {
 function update() {
     if (gameOver || gameWon) return;
 
+    const currentTime = performance.now();
+    const deltaTime = (currentTime - lastTime) / 1000; // Час у секундах
+    lastTime = currentTime;
+
     // Оновлення гравця
     let newX = player.x + player.dx / TILE_SIZE;
     let newY = player.y + player.dy / TILE_SIZE;
@@ -115,7 +121,13 @@ function update() {
         player.y = newY;
     }
 
-    player.mouth = (player.mouth + 0.5) % 20;
+    // Анімація рота залежно від руху
+    const mouthSpeed = Math.sqrt(player.dx * player.dx + player.dy * player.dy) * 10 || 5;
+    if (player.dx !== 0 || player.dy !== 0) {
+        player.mouth = (player.mouth + mouthSpeed * deltaTime) % 20;
+    } else {
+        player.mouth = 0; // Закритий рот при зупинці
+    }
 
     const tileX = Math.floor(player.x);
     const tileY = Math.floor(player.y);
@@ -129,9 +141,8 @@ function update() {
 
     // Оновлення привидів
     ghosts.forEach(ghost => {
-        ghost.anim = (ghost.anim + 0.3) % 10;
+        ghost.anim = (ghost.anim + 0.3 * deltaTime * 60) % 10; // Анімація привидів також залежить від часу
 
-        // Оновлення цілей привидів з частотою
         if (Math.random() < GHOST_UPDATE_TARGET_FREQ) {
             if (ghost.color === 'red') {
                 ghost.targetX = player.x;
@@ -140,7 +151,7 @@ function update() {
                 ghost.targetX = player.x + player.dx * 2 / TILE_SIZE;
                 ghost.targetY = player.y + player.dy * 2 / TILE_SIZE;
             } else { // lime ghost
-                ghost.targetX = Math.random() * (map[0].length - 2) + 1; // Випадкова точка
+                ghost.targetX = Math.random() * (map[0].length - 2) + 1;
                 ghost.targetY = Math.random() * (map.length - 2) + 1;
             }
         }
@@ -183,7 +194,6 @@ function update() {
                 }
             });
 
-            // Випадковість у русі привидів
             const randomChance = ghost.stuckCounter > 10 ? 0.5 : 0.3;
             if (Math.random() < randomChance && validDirs.length > 1) {
                 bestDir = validDirs[Math.floor(Math.random() * validDirs.length)];
@@ -238,7 +248,17 @@ function drawMap() {
 }
 
 function drawPlayer() {
-    // Основний код рота...
+    const playerX = player.x * TILE_SIZE + TILE_SIZE / 2;
+    const playerY = player.y * TILE_SIZE + TILE_SIZE / 2;
+    let startAngle, endAngle;
+
+    switch (player.direction) {
+        case 0: startAngle = player.mouth * 0.1; endAngle = -player.mouth * 0.1; break; // Вправо
+        case 1: startAngle = Math.PI / 2 + player.mouth * 0.1; endAngle = Math.PI / 2 - player.mouth * 0.1; break; // Вниз
+        case 2: startAngle = Math.PI + player.mouth * 0.1; endAngle = Math.PI - player.mouth * 0.1; break; // Вліво
+        case 3: startAngle = -Math.PI / 2 + player.mouth * 0.1; endAngle = -Math.PI / 2 - player.mouth * 0.1; break; // Вгору
+    }
+
     ctx.fillStyle = 'yellow';
     ctx.beginPath();
     ctx.arc(playerX, playerY, TILE_SIZE / 2, startAngle, endAngle);
@@ -251,18 +271,6 @@ function drawPlayer() {
     const eyeX = playerX + (TILE_SIZE / 4) * Math.cos(player.direction * Math.PI / 2);
     const eyeY = playerY - (TILE_SIZE / 4) * Math.sin(player.direction * Math.PI / 2);
     ctx.arc(eyeX, eyeY, TILE_SIZE / 8, 0, Math.PI * 2);
-    ctx.fill();
-
-
-    switch (player.direction) {
-        case 0: startAngle = player.mouth * 0.1; endAngle = -player.mouth * 0.1; break;
-        case 1: startAngle = Math.PI / 2 + player.mouth * 0.1; endAngle = Math.PI / 2 - player.mouth * 0.1; break;
-        case 2: startAngle = Math.PI + player.mouth * 0.1; endAngle = Math.PI - player.mouth * 0.1; break;
-        case 3: startAngle = -Math.PI / 2 + player.mouth * 0.1; endAngle = -Math.PI / 2 - player.mouth * 0.1; break;
-    }
-
-    ctx.arc(playerX, playerY, TILE_SIZE / 2, startAngle, endAngle);
-    ctx.lineTo(playerX, playerY);
     ctx.fill();
 }
 
