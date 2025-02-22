@@ -46,26 +46,10 @@ let ghosts = [
 
 document.addEventListener('keydown', (e) => {
     switch(e.key) {
-        case 'ArrowUp': 
-            player.nextDx = 0; 
-            player.nextDy = -PLAYER_SPEED; 
-            player.direction = 3; 
-            break;
-        case 'ArrowDown': 
-            player.nextDx = 0; 
-            player.nextDy = PLAYER_SPEED; 
-            player.direction = 1; 
-            break;
-        case 'ArrowLeft': 
-            player.nextDx = -PLAYER_SPEED; 
-            player.nextDy = 0; 
-            player.direction = 2; 
-            break;
-        case 'ArrowRight': 
-            player.nextDx = PLAYER_SPEED; 
-            player.nextDy = 0; 
-            player.direction = 0; 
-            break;
+        case 'ArrowUp': player.nextDx = 0; player.nextDy = -PLAYER_SPEED; player.direction = 3; break;
+        case 'ArrowDown': player.nextDx = 0; player.nextDy = PLAYER_SPEED; player.direction = 1; break;
+        case 'ArrowLeft': player.nextDx = -PLAYER_SPEED; player.nextDy = 0; player.direction = 2; break;
+        case 'ArrowRight': player.nextDx = PLAYER_SPEED; player.nextDy = 0; player.direction = 0; break;
     }
 });
 
@@ -79,17 +63,19 @@ function canMove(x, y, size = 0.9) {
            map[tileY][Math.floor(x + size)] !== '#';
 }
 
-function alignToGrid(pos) {
-    return Math.round(pos * 10) / 10;
+function isCloseToAligned(pos) {
+    // Полегшене вирівнювання: поворот можливий, якщо відстань до цілого числа < 0.2
+    return Math.abs(pos - Math.round(pos)) < 0.2;
 }
 
 function update() {
-    // Оновлення гравця з буфером наступного напрямку
+    // Оновлення гравця
     let newX = player.x + player.dx / TILE_SIZE;
     let newY = player.y + player.dy / TILE_SIZE;
     
-    // Спроба змінити напрямок
-    if (player.nextDx !== player.dx || player.nextDy !== player.dy) {
+    // Перевірка можливості повороту з полегшенням
+    if ((player.nextDx !== player.dx || player.nextDy !== player.dy) && 
+        isCloseToAligned(player.x) && isCloseToAligned(player.y)) {
         const nextX = player.x + player.nextDx / TILE_SIZE;
         const nextY = player.y + player.nextDy / TILE_SIZE;
         if (canMove(nextX, nextY)) {
@@ -97,9 +83,6 @@ function update() {
             player.dy = player.nextDy;
             newX = nextX;
             newY = nextY;
-            // Вирівнювання при повороті
-            if (player.dx !== 0) player.y = alignToGrid(player.y);
-            if (player.dy !== 0) player.x = alignToGrid(player.x);
         }
     }
     
@@ -117,13 +100,13 @@ function update() {
         player.score += 10;
     }
     
-    // Оновлення привидів з покращеною логікою
+    // Оновлення привидів
     ghosts.forEach(ghost => {
         ghost.anim = (ghost.anim + 0.3) % 10;
-        
-        // Оновлення цілі привида (гравець)
-        ghost.targetX = player.x;
-        ghost.targetY = player.y;
+        ghost.targetX = ghost.color === 'pink' ? 
+            player.x + player.dx * 2 / TILE_SIZE : player.x;
+        ghost.targetY = ghost.color === 'pink' ? 
+            player.y + player.dy * 2 / TILE_SIZE : player.y;
         
         const directions = [
             { dx: GHOST_SPEED, dy: 0 },
@@ -132,17 +115,12 @@ function update() {
             { dx: 0, dy: -GHOST_SPEED }
         ];
         
-        // Знаходимо доступні напрямки
         let validDirs = directions.filter(dir => 
             canMove(ghost.x + dir.dx / TILE_SIZE, ghost.y + dir.dy / TILE_SIZE)
         );
         
-        if (validDirs.length === 0) {
-            // Якщо немає напрямків, повертаємо назад
-            ghost.dx = -ghost.dx;
-            ghost.dy = -ghost.dy;
-        } else {
-            // Вибір найкращого напрямку до цілі
+        // Перевірка можливості повороту для привидів з полегшенням
+        if (validDirs.length > 0 && isCloseToAligned(ghost.x) && isCloseToAligned(ghost.y)) {
             let bestDir = validDirs[0];
             let minDist = Infinity;
             
@@ -156,37 +134,22 @@ function update() {
                 }
             });
             
-            // Стратегія для різних привидів
-            if (ghost.color === 'pink') {
-                // Рожевий привид намагається передбачити рух гравця
-                const predictedX = player.x + player.dx * 2 / TILE_SIZE;
-                const predictedY = player.y + player.dy * 2 / TILE_SIZE;
-                minDist = Infinity;
-                validDirs.forEach(dir => {
-                    const nextX = ghost.x + dir.dx / TILE_SIZE;
-                    const nextY = ghost.y + dir.dy / TILE_SIZE;
-                    const dist = Math.hypot(nextX - predictedX, nextY - predictedY);
-                    if (dist < minDist) {
-                        minDist = dist;
-                        bestDir = dir;
-                    }
-                });
-            }
-            
-            // 20% шанс випадкового руху для меншої передбачуваності
             if (Math.random() < 0.2 && validDirs.length > 1) {
                 bestDir = validDirs[Math.floor(Math.random() * validDirs.length)];
             }
             
             ghost.dx = bestDir.dx;
             ghost.dy = bestDir.dy;
-            
-            const nextX = ghost.x + ghost.dx / TILE_SIZE;
-            const nextY = ghost.y + ghost.dy / TILE_SIZE;
-            if (canMove(nextX, nextY)) {
-                ghost.x = nextX;
-                ghost.y = nextY;
-            }
+        }
+        
+        const nextX = ghost.x + ghost.dx / TILE_SIZE;
+        const nextY = ghost.y + ghost.dy / TILE_SIZE;
+        if (canMove(nextX, nextY)) {
+            ghost.x = nextX;
+            ghost.y = nextY;
+        } else {
+            ghost.dx = 0;
+            ghost.dy = 0;
         }
         
         if (Math.hypot(ghost.x - player.x, ghost.y - player.y) < 0.8) {
