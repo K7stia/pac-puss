@@ -244,28 +244,15 @@ function drawPlayer() {
     const playerY = player.y * TILE_SIZE + TILE_SIZE / 2;
     let startAngle, endAngle;
 
-    // Визначаємо кут рота залежно від напрямку руху
     switch (player.direction) {
-        case 0: // Вправо
-            startAngle = player.mouth * 0.1; // Починається зверху
-            endAngle = 2 * Math.PI - player.mouth * 0.1; // Закінчується знизу
-            break;
-        case 1: // Вниз
-            startAngle = Math.PI / 2 + player.mouth * 0.1; // Починається справа
-            endAngle = 3 * Math.PI / 2 - player.mouth * 0.1; // Закінчується зліва
-            break;
-        case 2: // Вліво
-            startAngle = Math.PI + player.mouth * 0.1; // Починається знизу
-            endAngle = Math.PI - player.mouth * 0.1; // Закінчується зверху
-            break;
-        case 3: // Вгору
-            startAngle = 3 * Math.PI / 2 + player.mouth * 0.1; // Починається зліва
-            endAngle = Math.PI / 2 - player.mouth * 0.1; // Закінчується справа
-            break;
+        case 0: startAngle = player.mouth * 0.1; endAngle = -player.mouth * 0.1; break;
+        case 1: startAngle = Math.PI / 2 + player.mouth * 0.1; endAngle = Math.PI / 2 - player.mouth * 0.1; break;
+        case 2: startAngle = Math.PI + player.mouth * 0.1; endAngle = Math.PI - player.mouth * 0.1; break;
+        case 3: startAngle = -Math.PI / 2 + player.mouth * 0.1; endAngle = -Math.PI / 2 - player.mouth * 0.1; break;
     }
 
     ctx.arc(playerX, playerY, TILE_SIZE / 2, startAngle, endAngle);
-    ctx.lineTo(playerX, playerY); // Закриваємо рот до центру
+    ctx.lineTo(playerX, playerY);
     ctx.fill();
 }
 
