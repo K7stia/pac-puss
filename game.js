@@ -1,57 +1,91 @@
-const canvas = document.createElement("canvas");
-const ctx = canvas.getContext("2d");
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d');
 document.body.appendChild(canvas);
 canvas.width = 600;
 canvas.height = 600;
 
-const tileSize = 30;
+document.body.style.textAlign = 'center';
+const TILE_SIZE = 30;
+const MAP_SIZE = 20;
+const PLAYER_SPEED = 2;
+const GHOST_SPEED = 1.5;
 
 const map = [
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,1],
-  [1,2,1,1,1,1,2,1,2,1,1,2,1,2,1,1,1,1,2,1],
-  [1,2,1,0,0,1,2,1,2,2,2,2,1,2,1,0,0,1,2,1],
-  [1,2,1,0,0,1,2,1,1,1,1,1,1,2,1,0,0,1,2,1],
-  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
-  [1,1,1,1,1,1,2,1,1,1,1,1,1,2,1,1,1,1,1,1],
-  [1,2,1,2,2,2,2,2,3,1,1,3,2,2,2,2,2,1,2,1],
-  [1,2,1,1,1,1,2,1,2,1,1,2,1,2,1,1,1,1,2,1],
-  [1,2,2,2,2,2,2,1,2,2,2,2,1,2,2,2,2,2,2,1],
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-];
+    '####################',
+    '#........#.........#',
+    '#.####.#.#.#######.#',
+    '#.#....#.#.#.......#',
+    '#.#.##.#.#.#.#####.#',
+    '#.#....#.#.#.......#',
+    '#.####.#.#.#######.#',
+    '#........#.........#',
+    '####################'
+].map(row => row.split(''));
 
-const rows = map.length;
-const cols = map[0].length;
+let player = { x: 1, y: 1, dx: 0, dy: 0, score: 0 };
+let ghosts = [{ x: 10, y: 10, dx: 1, dy: 0 }];
 
-let pacman = { x: 1, y: 1, dirX: 0, dirY: 0, mouthOpen: 0, nextMove: null };
-let score = 0;
-
-const ghosts = [
-  { x: 10, y: 1, dirX: 1, dirY: 0, color: "red", moveDelay: 0 },
-  { x: 15, y: 3, dirX: -1, dirY: 0, color: "pink", moveDelay: 0 }
-];
-
-function drawMap() {
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < cols; x++) {
-      if (map[y] && map[y][x] !== undefined) {
-        ctx.fillStyle = map[y][x] === 1 ? "blue" : "black";
-        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-      }
-    }
-  }
-}
-
-document.addEventListener("keydown", (event) => {
-  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) {
-    pacman.nextMove = event.key;
-  }
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowUp') { player.dx = 0; player.dy = -PLAYER_SPEED; }
+    if (e.key === 'ArrowDown') { player.dx = 0; player.dy = PLAYER_SPEED; }
+    if (e.key === 'ArrowLeft') { player.dx = -PLAYER_SPEED; player.dy = 0; }
+    if (e.key === 'ArrowRight') { player.dx = PLAYER_SPEED; player.dy = 0; }
 });
 
-function gameLoop() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawMap();
-  requestAnimationFrame(gameLoop);
+function update() {
+    let newX = player.x + player.dx / TILE_SIZE;
+    let newY = player.y + player.dy / TILE_SIZE;
+    if (map[Math.floor(newY)][Math.floor(newX)] !== '#') {
+        player.x = newX;
+        player.y = newY;
+    }
+
+    ghosts.forEach(ghost => {
+        let nextX = ghost.x + ghost.dx / TILE_SIZE;
+        let nextY = ghost.y + ghost.dy / TILE_SIZE;
+        if (map[Math.floor(nextY)][Math.floor(nextX)] === '#') {
+            ghost.dx = -ghost.dx;
+            ghost.dy = -ghost.dy;
+        } else {
+            ghost.x = nextX;
+            ghost.y = nextY;
+        }
+    });
 }
 
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    map.forEach((row, y) => {
+        row.forEach((cell, x) => {
+            if (cell === '#') {
+                ctx.fillStyle = 'blue';
+                ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            } else if (cell === '.') {
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        });
+    });
+    
+    ctx.fillStyle = 'yellow';
+    ctx.beginPath();
+    ctx.arc(player.x * TILE_SIZE + TILE_SIZE / 2, player.y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 2, 0.2 * Math.PI, 1.8 * Math.PI);
+    ctx.lineTo(player.x * TILE_SIZE + TILE_SIZE / 2, player.y * TILE_SIZE + TILE_SIZE / 2);
+    ctx.fill();
+    
+    ghosts.forEach(ghost => {
+        ctx.fillStyle = 'red';
+        ctx.beginPath();
+        ctx.arc(ghost.x * TILE_SIZE + TILE_SIZE / 2, ghost.y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 2, 0, Math.PI * 2);
+        ctx.fill();
+    });
+}
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
 gameLoop();
