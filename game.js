@@ -46,7 +46,6 @@ let player = { x: 1, y: 1, dx: 0, dy: 0, score: 0, mouth: 0, direction: 0, nextD
 let ghosts = [];
 let gameOver = false;
 let gameWon = false;
-let lastTime = performance.now();
 
 // Ініціалізація гри
 function resetGame() {
@@ -59,7 +58,6 @@ function resetGame() {
     map.forEach((row, y) => row.forEach((cell, x) => { if (cell === ' ') map[y][x] = '.'; }));
     gameOver = false;
     gameWon = false;
-    lastTime = performance.now();
 }
 
 // Управління гравцем
@@ -96,10 +94,6 @@ function isCloseToAligned(pos) {
 function update() {
     if (gameOver || gameWon) return;
 
-    const currentTime = performance.now();
-    const deltaTime = (currentTime - lastTime) / 1000; // Час у секундах
-    lastTime = currentTime;
-
     // Оновлення гравця
     let newX = player.x + player.dx / TILE_SIZE;
     let newY = player.y + player.dy / TILE_SIZE;
@@ -121,13 +115,7 @@ function update() {
         player.y = newY;
     }
 
-    // Анімація рота кота залежно від руху
-    const mouthSpeed = Math.sqrt(player.dx * player.dx + player.dy * player.dy) * 10 || 5;
-    if (player.dx !== 0 || player.dy !== 0) {
-        player.mouth = (player.mouth + mouthSpeed * deltaTime) % 20;
-    } else {
-        player.mouth = 0; // Закритий рот при зупинці
-    }
+    player.mouth = (player.mouth + 0.5) % 20;
 
     const tileX = Math.floor(player.x);
     const tileY = Math.floor(player.y);
@@ -141,8 +129,9 @@ function update() {
 
     // Оновлення привидів
     ghosts.forEach(ghost => {
-        ghost.anim = (ghost.anim + 0.3 * deltaTime * 60) % 10;
+        ghost.anim = (ghost.anim + 0.3) % 10;
 
+        // Оновлення цілей привидів з частотою
         if (Math.random() < GHOST_UPDATE_TARGET_FREQ) {
             if (ghost.color === 'red') {
                 ghost.targetX = player.x;
@@ -151,7 +140,7 @@ function update() {
                 ghost.targetX = player.x + player.dx * 2 / TILE_SIZE;
                 ghost.targetY = player.y + player.dy * 2 / TILE_SIZE;
             } else { // lime ghost
-                ghost.targetX = Math.random() * (map[0].length - 2) + 1;
+                ghost.targetX = Math.random() * (map[0].length - 2) + 1; // Випадкова точка
                 ghost.targetY = Math.random() * (map.length - 2) + 1;
             }
         }
@@ -194,6 +183,7 @@ function update() {
                 }
             });
 
+            // Випадковість у русі привидів
             const randomChance = ghost.stuckCounter > 10 ? 0.5 : 0.3;
             if (Math.random() < randomChance && validDirs.length > 1) {
                 bestDir = validDirs[Math.floor(Math.random() * validDirs.length)];
@@ -248,62 +238,21 @@ function drawMap() {
 }
 
 function drawPlayer() {
+    ctx.fillStyle = 'yellow';
+    ctx.beginPath();
     const playerX = player.x * TILE_SIZE + TILE_SIZE / 2;
     const playerY = player.y * TILE_SIZE + TILE_SIZE / 2;
     let startAngle, endAngle;
 
-    // Обчислення кута рота залежно від напрямку
     switch (player.direction) {
-        case 0: startAngle = player.mouth * 0.1; endAngle = -player.mouth * 0.1; break; // Вправо
-        case 1: startAngle = Math.PI / 2 + player.mouth * 0.1; endAngle = Math.PI / 2 - player.mouth * 0.1; break; // Вниз
-        case 2: startAngle = Math.PI + player.mouth * 0.1; endAngle = Math.PI - player.mouth * 0.1; break; // Вліво
-        case 3: startAngle = -Math.PI / 2 + player.mouth * 0.1; endAngle = -Math.PI / 2 - player.mouth * 0.1; break; // Вгору
+        case 0: startAngle = player.mouth * 0.1; endAngle = -player.mouth * 0.1; break;
+        case 1: startAngle = Math.PI / 2 + player.mouth * 0.1; endAngle = Math.PI / 2 - player.mouth * 0.1; break;
+        case 2: startAngle = Math.PI + player.mouth * 0.1; endAngle = Math.PI - player.mouth * 0.1; break;
+        case 3: startAngle = -Math.PI / 2 + player.mouth * 0.1; endAngle = -Math.PI / 2 - player.mouth * 0.1; break;
     }
 
-    // Голова кота (жовта)
-    ctx.fillStyle = 'yellow';
-    ctx.beginPath();
     ctx.arc(playerX, playerY, TILE_SIZE / 2, startAngle, endAngle);
     ctx.lineTo(playerX, playerY);
-    ctx.fill();
-
-    // Вуха кота (два трикутники)
-    ctx.fillStyle = 'yellow';
-    ctx.beginPath();
-    ctx.save(); // Зберігаємо контекст для повороту
-    ctx.translate(playerX, playerY);
-    ctx.rotate(player.direction * Math.PI / 2); // Поворот вух залежно від напрямку
-    ctx.moveTo(-TILE_SIZE / 3, -TILE_SIZE / 2 - 5); // Ліве вухо
-    ctx.lineTo(-TILE_SIZE / 6, -TILE_SIZE / 2 - 10);
-    ctx.lineTo(0, -TILE_SIZE / 2 - 5);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.moveTo(TILE_SIZE / 3, -TILE_SIZE / 2 - 5); // Праве вухо
-    ctx.lineTo(TILE_SIZE / 6, -TILE_SIZE / 2 - 10);
-    ctx.lineTo(0, -TILE_SIZE / 2 - 5);
-    ctx.fill();
-    ctx.restore(); // Відновлюємо контекст
-
-    // Очі кота (два білі кола з чорними зіницями)
-    ctx.fillStyle = 'white';
-    ctx.beginPath();
-    ctx.arc(playerX - TILE_SIZE / 6, playerY - TILE_SIZE / 6, TILE_SIZE / 8, 0, Math.PI * 2); // Ліве око
-    ctx.arc(playerX + TILE_SIZE / 6, playerY - TILE_SIZE / 6, TILE_SIZE / 8, 0, Math.PI * 2); // Праве око
-    ctx.fill();
-
-    ctx.fillStyle = 'black';
-    ctx.beginPath();
-    ctx.arc(playerX - TILE_SIZE / 6, playerY - TILE_SIZE / 6, TILE_SIZE / 16, 0, Math.PI * 2); // Зіниця лівого ока
-    ctx.arc(playerX + TILE_SIZE / 6, playerY - TILE_SIZE / 6, TILE_SIZE / 16, 0, Math.PI * 2); // Зіниця правого ока
-    ctx.fill();
-
-    // Ніс кота (рожевий трикутник)
-    ctx.fillStyle = 'pink';
-    ctx.beginPath();
-    ctx.moveTo(playerX, playerY); // Центр
-    ctx.lineTo(playerX - TILE_SIZE / 10, playerY + TILE_SIZE / 10);
-    ctx.lineTo(playerX + TILE_SIZE / 10, playerY + TILE_SIZE / 10);
     ctx.fill();
 }
 
