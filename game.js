@@ -17,6 +17,28 @@ document.body.appendChild(canvas);
 canvas.width = CANVAS_WIDTH;
 canvas.height = CANVAS_HEIGHT;
 
+// Адаптація розміру canvas
+function resizeCanvas() {
+    const scale = Math.min(window.innerWidth / CANVAS_WIDTH, window.innerHeight / CANVAS_HEIGHT);
+    canvas.style.width = `${CANVAS_WIDTH * scale}px`;
+    canvas.style.height = `${CANVAS_HEIGHT * scale}px`;
+    canvas.width = CANVAS_WIDTH;
+    canvas.height = CANVAS_HEIGHT;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// Нормалізація координат для сенсорного введення
+function normalizeTouchCoords(touch) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = CANVAS_WIDTH / rect.width;
+    const scaleY = CANVAS_HEIGHT / rect.height;
+    return {
+        x: (touch.clientX - rect.left) * scaleX,
+        y: (touch.clientY - rect.top) * scaleY
+    };
+}
+
 // Звуки
 const eatSound = new Audio('eat.wav');
 const powerUpSound = new Audio('power.wav');
@@ -96,7 +118,7 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Сенсорне керування
+// Сенсорне керування з оптимізацією чутливості
 let touchStartX = 0;
 let touchStartY = 0;
 canvas.addEventListener('touchstart', (e) => {
@@ -104,25 +126,76 @@ canvas.addEventListener('touchstart', (e) => {
         resetGame();
         return;
     }
-    const touch = e.touches[0];
-    touchStartX = touch.clientX;
-    touchStartY = touch.clientY;
+    const touch = normalizeTouchCoords(e.touches[0]);
+    touchStartX = touch.x;
+    touchStartY = touch.y;
 });
+
 canvas.addEventListener('touchmove', (e) => {
     if (gameOver || gameWon) return;
-    const touch = e.touches[0];
-    const deltaX = touch.clientX - touchStartX;
-    const deltaY = touch.clientY - touchStartY;
-    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+    const touch = normalizeTouchCoords(e.touches[0]);
+    const deltaX = touch.x - touchStartX;
+    const deltaY = touch.y - touchStartY;
+    const threshold = 20;
+
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > threshold) {
         player.nextDx = deltaX > 0 ? PLAYER_SPEED : -PLAYER_SPEED;
         player.nextDy = 0;
         player.direction = deltaX > 0 ? 0 : 2;
-    } else {
+        touchStartX = touch.x;
+    } else if (Math.abs(deltaY) > threshold) {
         player.nextDx = 0;
         player.nextDy = deltaY > 0 ? PLAYER_SPEED : -PLAYER_SPEED;
         player.direction = deltaY > 0 ? 1 : 3;
+        touchStartY = touch.y;
     }
 });
+
+// Додаткові кнопки на екрані (тільки для мобільних)
+const isMobile = () => {
+    return window.matchMedia("(max-width: 600px)").matches || 'ontouchstart' in window;
+};
+
+const buttonContainer = document.createElement('div');
+buttonContainer.className = 'control-buttons';
+
+const directions = [
+    { name: '↑', dx: 0, dy: -PLAYER_SPEED, dir: 3 },
+    { name: '↓', dx: 0, dy: PLAYER_SPEED, dir: 1 },
+    { name: '←', dx: -PLAYER_SPEED, dy: 0, dir: 2 },
+    { name: '→', dx: PLAYER_SPEED, dy: 0, dir: 0 }
+];
+
+function initializeControls() {
+    if (isMobile()) {
+        directions.forEach(d => {
+            const btn = document.createElement('button');
+            btn.textContent = d.name;
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                player.nextDx = d.dx;
+                player.nextDy = d.dy;
+                player.direction = d.dir;
+            });
+            btn.addEventListener('touchend', () => {
+                if (player.nextDx === d.dx && player.nextDy === d.dy) {
+                    player.nextDx = 0;
+                    player.nextDy = 0;
+                }
+            });
+            buttonContainer.appendChild(btn);
+        });
+        document.body.appendChild(buttonContainer);
+    } else {
+        if (buttonContainer.parentNode) {
+            buttonContainer.parentNode.removeChild(buttonContainer);
+        }
+    }
+}
+
+// Ініціалізація контролів при завантаженні та зміні розміру
+initializeControls();
+window.addEventListener('resize', initializeControls);
 
 // Перевірка можливості руху
 function canMove(x, y, size = 0.9) {
@@ -152,9 +225,9 @@ function isDeadEnd(x, y, dx, dy) {
             { dx: 0, dy: -GHOST_SPEED }
         ];
         const validDirs = directions.filter(dir =>
-            dir.dx !== -dx || dir.dy !== -dy // Виключаємо зворотний напрямок
+            dir.dx !== -dx || dir.dy !== -dy
         ).filter(dir => canMove(nextX + dir.dx / TILE_SIZE, nextY + dir.dy / TILE_SIZE));
-        return validDirs.length === 0; // Тупик, якщо немає інших шляхів
+        return validDirs.length === 0;
     }
     return false;
 }
@@ -213,10 +286,8 @@ function update() {
     ghosts.forEach(ghost => {
         ghost.anim = (ghost.anim + 0.3) % 10;
 
-        // Визначення цілі
         if (Math.random() < GHOST_UPDATE_TARGET_FREQ) {
             if (ghost.vulnerable) {
-                // Втеча від гравця
                 const dxToPlayer = player.x - ghost.x;
                 const dyToPlayer = player.y - ghost.y;
                 ghost.targetX = ghost.x - dxToPlayer;
@@ -265,12 +336,10 @@ function update() {
             let bestDir = validDirs[0];
             let minDist = Infinity;
 
-            // Виключаємо зворотний напрямок, якщо не в тупику
             validDirs = validDirs.filter(dir =>
                 !(dir.dx === -ghost.dx && dir.dy === -ghost.dy) || validDirs.length === 1
             );
 
-            // Перевірка на тупик
             const inDeadEnd = isDeadEnd(ghost.x, ghost.y, ghost.dx, ghost.dy);
 
             validDirs.forEach(dir => {
@@ -299,7 +368,6 @@ function update() {
             ghost.x = nextX;
             ghost.y = nextY;
         } else if (ghost.stuckCounter > 10) {
-            // Якщо довго застрягли, обираємо випадковий напрямок
             const randomDir = validDirs[Math.floor(Math.random() * validDirs.length)];
             ghost.dx = randomDir.dx;
             ghost.dy = randomDir.dy;
@@ -408,7 +476,7 @@ function drawGhosts() {
         const ghostX = ghost.x * TILE_SIZE + TILE_SIZE / 2;
         const ghostY = ghost.y * TILE_SIZE + TILE_SIZE / 2;
 
-        ctx.fillStyle = ghost.vulnerable ? '#00BFFF' : ghost.color; // Голубий для уразливих
+        ctx.fillStyle = ghost.vulnerable ? '#00BFFF' : ghost.color;
         ctx.beginPath();
         ctx.arc(ghostX, ghostY, TILE_SIZE / 2, Math.PI, 0);
         ctx.moveTo(ghostX - TILE_SIZE / 2, ghostY);

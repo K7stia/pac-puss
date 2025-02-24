@@ -18,11 +18,16 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
+            /* Змінено з height на min-height для гнучкості */
             margin: 0;
             background-color: black;
             color: white;
             font-family: Arial, sans-serif;
+            overflow: hidden;
+            /* Запобігає прокручуванню */
+            position: relative;
+            /* Для правильного позиціонування кнопок */
         }
 
         h1 {
@@ -35,13 +40,65 @@
             line-height: 150%;
             letter-spacing: 1px;
             text-shadow: 2px 4px rgb(255 247 100 / 37%);
-            margin: 0;
-            position: relative;
-            top: 1px;
+            margin: 20px 0;
+            /* Додано відступи */
+            z-index: 1;
+            /* Щоб заголовок був вище кнопок */
         }
 
         canvas {
             border: 2px solid white;
+            max-width: 100%;
+            /* Для адаптивності */
+            max-height: 80vh;
+            /* Обмежуємо висоту canvas */
+            z-index: 1;
+            /* Щоб canvas був вище фону, але нижче кнопок */
+        }
+
+        /* Стилі для кнопок керування */
+        .control-buttons {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 2;
+            /* Кнопки поверх усього */
+        }
+
+        .control-buttons button {
+            padding: 15px;
+            font-size: 20px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-family: "Silkscreen", serif;
+            /* Відповідність шрифту заголовка */
+            cursor: pointer;
+            transition: background-color 0.2s;
+            /* Плавна зміна кольору */
+        }
+
+        .control-buttons button:active {
+            background-color: #caf85c;
+            /* Колір при натисканні */
+            color: black;
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.5em;
+                /* Зменшуємо заголовок на малих екранах */
+            }
+
+            .control-buttons button {
+                padding: 10px;
+                /* Зменшуємо кнопки */
+                font-size: 16px;
+            }
         }
     </style>
 </head>
