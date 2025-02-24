@@ -7,7 +7,6 @@ const GHOST_SPEED = TILE_SIZE / 20;
 const COLLISION_DISTANCE = 0.8;
 const ALIGNMENT_THRESHOLD = 0.2;
 const GHOST_UPDATE_TARGET_FREQ = 0.05;
-const POWER_UP_DURATION = 5000;
 
 // Ініціалізація canvas
 const canvas = document.createElement('canvas');
@@ -17,13 +16,7 @@ document.body.appendChild(canvas);
 canvas.width = CANVAS_WIDTH;
 canvas.height = CANVAS_HEIGHT;
 
-// Звуки
-const eatSound = new Audio('eat.wav');
-const powerUpSound = new Audio('power.wav');
-const loseSound = new Audio('lose.wav');
-const eatGhostSound = new Audio('eatghost.wav');
-
-// Обробник кліку миші
+// Додаємо обробник кліку миші
 canvas.addEventListener('click', () => {
     if (gameOver || gameWon) {
         resetGame();
@@ -33,19 +26,19 @@ canvas.addEventListener('click', () => {
 // Карта гри
 const map = [
     '####################',
-    '#P..#......#.....P.#',
+    '#...#......#.......#',
     '#.#.#.##.#...#.###.#',
     '#.#.#....##..#.#...#',
     '#.#.##.#.#.#.#.#.###',
     '#.#....#.#..##...#.#',
     '#.####.#.#...#.###.#',
-    '#..........#.....P.#',
+    '#..........#.......#',
     '######.#.#.###.#####',
     '#....#.#.#.#...#...#',
     '#.####.#.#.###.###.#',
     '#.#....#.#...#...#.#',
     '#.#.##.###.###.###.#',
-    '#P...#.............#',
+    '#....#.............#',
     '#.##.#.#.#######.#.#',
     '#..#.#.#.....#...#.#',
     '##.#.#.#.###.#.###.#',
@@ -59,31 +52,24 @@ let player = { x: 1, y: 1, dx: 0, dy: 0, score: 0, mouth: 0, direction: 0, nextD
 let ghosts = [];
 let gameOver = false;
 let gameWon = false;
-let powerUpActive = false;
-let powerUpTimer = 0;
 
 // Ініціалізація гри
 function resetGame() {
     player = { x: 1, y: 1, dx: 0, dy: 0, score: 0, mouth: 0, direction: 0, nextDx: 0, nextDy: 0 };
     ghosts = [
-        { x: 18, y: 1, dx: -GHOST_SPEED, dy: 0, color: 'red', anim: 0, targetX: 1, targetY: 1, stuckCounter: 0, vulnerable: false },
-        { x: 18, y: 13, dx: -GHOST_SPEED, dy: 0, color: 'pink', anim: 0, targetX: 1, targetY: 1, stuckCounter: 0, vulnerable: false },
-        { x: 2, y: 18, dx: GHOST_SPEED, dy: 0, color: 'lime', anim: 0, targetX: 1, targetY: 1, stuckCounter: 0, vulnerable: false }
+        { x: 18, y: 1, dx: -GHOST_SPEED, dy: 0, color: 'red', anim: 0, targetX: 1, targetY: 1, stuckCounter: 0 },
+        { x: 18, y: 13, dx: -GHOST_SPEED, dy: 0, color: 'pink', anim: 0, targetX: 1, targetY: 1, stuckCounter: 0 },
+        { x: 2, y: 18, dx: GHOST_SPEED, dy: 0, color: 'lime', anim: 0, targetX: 1, targetY: 1, stuckCounter: 0 }
     ];
-    map.forEach((row, y) => row.forEach((cell, x) => {
-        if (cell === ' ') map[y][x] = '.';
-        if (cell === 'P') map[y][x] = 'P';
-    }));
+    map.forEach((row, y) => row.forEach((cell, x) => { if (cell === ' ') map[y][x] = '.'; }));
     gameOver = false;
     gameWon = false;
-    powerUpActive = false;
-    powerUpTimer = 0;
 }
 
-// Управління клавіатурою
+// Управління гравцем і перезапуск гри
 document.addEventListener('keydown', (e) => {
     if (gameOver || gameWon) {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (e.key === 'Enter' || e.key === 'Space') {
             resetGame();
         }
         return;
@@ -93,34 +79,6 @@ document.addEventListener('keydown', (e) => {
         case 'ArrowDown': player.nextDx = 0; player.nextDy = PLAYER_SPEED; player.direction = 1; break;
         case 'ArrowLeft': player.nextDx = -PLAYER_SPEED; player.nextDy = 0; player.direction = 2; break;
         case 'ArrowRight': player.nextDx = PLAYER_SPEED; player.nextDy = 0; player.direction = 0; break;
-    }
-});
-
-// Сенсорне керування
-let touchStartX = 0;
-let touchStartY = 0;
-canvas.addEventListener('touchstart', (e) => {
-    if (gameOver || gameWon) {
-        resetGame();
-        return;
-    }
-    const touch = e.touches[0];
-    touchStartX = touch.clientX;
-    touchStartY = touch.clientY;
-});
-canvas.addEventListener('touchmove', (e) => {
-    if (gameOver || gameWon) return;
-    const touch = e.touches[0];
-    const deltaX = touch.clientX - touchStartX;
-    const deltaY = touch.clientY - touchStartY;
-    if (Math.abs(deltaX) > Math.abs(deltaY)) {
-        player.nextDx = deltaX > 0 ? PLAYER_SPEED : -PLAYER_SPEED;
-        player.nextDy = 0;
-        player.direction = deltaX > 0 ? 0 : 2;
-    } else {
-        player.nextDx = 0;
-        player.nextDy = deltaY > 0 ? PLAYER_SPEED : -PLAYER_SPEED;
-        player.direction = deltaY > 0 ? 1 : 3;
     }
 });
 
@@ -140,37 +98,11 @@ function isCloseToAligned(pos) {
     return Math.abs(pos - Math.round(pos)) < ALIGNMENT_THRESHOLD;
 }
 
-// Перевірка, чи є тупик
-function isDeadEnd(x, y, dx, dy) {
-    const nextX = x + dx / TILE_SIZE;
-    const nextY = y + dy / TILE_SIZE;
-    if (!canMove(nextX, nextY)) {
-        const directions = [
-            { dx: GHOST_SPEED, dy: 0 },
-            { dx: -GHOST_SPEED, dy: 0 },
-            { dx: 0, dy: GHOST_SPEED },
-            { dx: 0, dy: -GHOST_SPEED }
-        ];
-        const validDirs = directions.filter(dir =>
-            dir.dx !== -dx || dir.dy !== -dy // Виключаємо зворотний напрямок
-        ).filter(dir => canMove(nextX + dir.dx / TILE_SIZE, nextY + dir.dy / TILE_SIZE));
-        return validDirs.length === 0; // Тупик, якщо немає інших шляхів
-    }
-    return false;
-}
-
 // Оновлення логіки гри
 function update() {
     if (gameOver || gameWon) return;
 
-    if (powerUpActive) {
-        powerUpTimer -= 1000 / 60;
-        if (powerUpTimer <= 0) {
-            powerUpActive = false;
-            ghosts.forEach(ghost => ghost.vulnerable = false);
-        }
-    }
-
+    // Оновлення гравця
     let newX = player.x + player.dx / TILE_SIZE;
     let newY = player.y + player.dy / TILE_SIZE;
 
@@ -191,55 +123,32 @@ function update() {
         player.y = newY;
     }
 
-    player.mouth = (player.mouth + 0.1) % (2 * Math.PI);
+    player.mouth = (player.mouth + 0.1) % (2 * Math.PI); // Циклічна анімація рота
 
     const tileX = Math.floor(player.x);
     const tileY = Math.floor(player.y);
     if (map[tileY][tileX] === '.') {
         map[tileY][tileX] = ' ';
         player.score += 10;
-        eatSound.play();
-    } else if (map[tileY][tileX] === 'P') {
-        map[tileY][tileX] = ' ';
-        player.score += 50;
-        powerUpSound.play();
-        powerUpActive = true;
-        powerUpTimer = POWER_UP_DURATION;
-        ghosts.forEach(ghost => ghost.vulnerable = true);
     }
 
+    // Перевірка перемоги
     checkWin();
 
+    // Оновлення привидів
     ghosts.forEach(ghost => {
         ghost.anim = (ghost.anim + 0.3) % 10;
 
-        // Визначення цілі
         if (Math.random() < GHOST_UPDATE_TARGET_FREQ) {
-            if (ghost.vulnerable) {
-                // Втеча від гравця
-                const dxToPlayer = player.x - ghost.x;
-                const dyToPlayer = player.y - ghost.y;
-                ghost.targetX = ghost.x - dxToPlayer;
-                ghost.targetY = ghost.y - dyToPlayer;
+            if (ghost.color === 'red') {
+                ghost.targetX = player.x;
+                ghost.targetY = player.y;
+            } else if (ghost.color === 'pink') {
+                ghost.targetX = player.x + player.dx * 2 / TILE_SIZE;
+                ghost.targetY = player.y + player.dy * 2 / TILE_SIZE;
             } else {
-                if (ghost.color === 'red') {
-                    ghost.targetX = player.x;
-                    ghost.targetY = player.y;
-                } else if (ghost.color === 'pink') {
-                    const aheadX = player.dx === 0 ? player.x + (Math.random() > 0.5 ? 4 : -4) : player.x + player.dx * 2 / TILE_SIZE;
-                    const aheadY = player.dy === 0 ? player.y + (Math.random() > 0.5 ? 4 : -4) : player.y + player.dy * 2 / TILE_SIZE;
-                    ghost.targetX = aheadX;
-                    ghost.targetY = aheadY;
-                } else if (ghost.color === 'lime') {
-                    if (Math.random() < 0.6) {
-                        ghost.targetX = Math.random() * (map[0].length - 2) + 1;
-                        ghost.targetY = Math.random() * (map.length - 2) + 1;
-                    } else {
-                        const nearestCross = findNearestCrossroad(ghost.x, ghost.y);
-                        ghost.targetX = nearestCross.x;
-                        ghost.targetY = nearestCross.y;
-                    }
-                }
+                ghost.targetX = Math.random() * (map[0].length - 2) + 1;
+                ghost.targetY = Math.random() * (map.length - 2) + 1;
             }
         }
 
@@ -261,32 +170,27 @@ function update() {
         if (!isMoving) ghost.stuckCounter++;
         else ghost.stuckCounter = 0;
 
-        if (validDirs.length > 0 && (isCloseToAligned(ghost.x) && isCloseToAligned(ghost.y) || ghost.stuckCounter > 5)) {
+        if (validDirs.length > 0 && (isCloseToAligned(ghost.x) && isCloseToAligned(ghost.y) || ghost.stuckCounter > 10)) {
             let bestDir = validDirs[0];
             let minDist = Infinity;
 
-            // Виключаємо зворотний напрямок, якщо не в тупику
             validDirs = validDirs.filter(dir =>
                 !(dir.dx === -ghost.dx && dir.dy === -ghost.dy) || validDirs.length === 1
             );
-
-            // Перевірка на тупик
-            const inDeadEnd = isDeadEnd(ghost.x, ghost.y, ghost.dx, ghost.dy);
 
             validDirs.forEach(dir => {
                 const nextX = ghost.x + dir.dx / TILE_SIZE;
                 const nextY = ghost.y + dir.dy / TILE_SIZE;
                 const dist = Math.hypot(nextX - ghost.targetX, nextY - ghost.targetY);
-                const stuckPenalty = ghost.stuckCounter > 5 && dir.dx === ghost.dx && dir.dy === ghost.dy ? 100 : 0;
-                const deadEndPenalty = inDeadEnd && (dir.dx === ghost.dx && dir.dy === ghost.dy) ? 200 : 0;
+                const stuckPenalty = ghost.stuckCounter > 10 && dir.dx === ghost.dx && dir.dy === ghost.dy ? 100 : 0;
 
-                if (dist + stuckPenalty + deadEndPenalty < minDist) {
-                    minDist = dist + stuckPenalty + deadEndPenalty;
+                if (dist + stuckPenalty < minDist) {
+                    minDist = dist + stuckPenalty;
                     bestDir = dir;
                 }
             });
 
-            const randomChance = ghost.vulnerable ? 0.7 : (ghost.stuckCounter > 5 || inDeadEnd ? 0.8 : 0.3);
+            const randomChance = ghost.stuckCounter > 10 ? 0.5 : 0.3;
             if (Math.random() < randomChance && validDirs.length > 1) {
                 bestDir = validDirs[Math.floor(Math.random() * validDirs.length)];
             }
@@ -298,8 +202,7 @@ function update() {
         if (isMoving) {
             ghost.x = nextX;
             ghost.y = nextY;
-        } else if (ghost.stuckCounter > 10) {
-            // Якщо довго застрягли, обираємо випадковий напрямок
+        } else if (ghost.stuckCounter > 20) {
             const randomDir = validDirs[Math.floor(Math.random() * validDirs.length)];
             ghost.dx = randomDir.dx;
             ghost.dy = randomDir.dy;
@@ -307,52 +210,17 @@ function update() {
         }
 
         if (Math.hypot(ghost.x - player.x, ghost.y - player.y) < COLLISION_DISTANCE) {
-            if (ghost.vulnerable) {
-                ghost.x = 18; ghost.y = 1;
-                player.score += 200;
-                eatGhostSound.play();
-            } else {
-                gameOver = true;
-                loseSound.play();
-            }
+            gameOver = true;
         }
     });
 }
 
 // Перевірка перемоги
 function checkWin() {
-    const dotsLeft = map.flat().filter(cell => cell === '.' || cell === 'P').length;
+    const dotsLeft = map.flat().filter(cell => cell === '.').length;
     if (dotsLeft === 0) {
         gameWon = true;
     }
-}
-
-// Пошук найближчого перехрестя
-function findNearestCrossroad(x, y) {
-    const tileX = Math.floor(x);
-    const tileY = Math.floor(y);
-    let closest = { x: tileX, y: tileY, dist: Infinity };
-
-    for (let i = 0; i < map.length; i++) {
-        for (let j = 0; j < map[0].length; j++) {
-            if (map[i][j] !== '#') {
-                const openDirs = [
-                    canMove(j + 1, i),
-                    canMove(j - 1, i),
-                    canMove(j, i + 1),
-                    canMove(j, i - 1)
-                ].filter(Boolean).length;
-
-                if (openDirs > 2) {
-                    const dist = Math.hypot(j - tileX, i - tileY);
-                    if (dist < closest.dist) {
-                        closest = { x: j, y: i, dist: dist };
-                    }
-                }
-            }
-        }
-    }
-    return closest;
 }
 
 // Рендеринг
@@ -370,11 +238,6 @@ function drawMap() {
                 ctx.beginPath();
                 ctx.arc(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 3, 0, Math.PI * 2);
                 ctx.fill();
-            } else if (cell === 'P') {
-                ctx.fillStyle = 'orange';
-                ctx.beginPath();
-                ctx.arc(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 8, 0, Math.PI * 2);
-                ctx.fill();
             }
         });
     });
@@ -386,13 +249,14 @@ function drawPlayer() {
     const playerX = player.x * TILE_SIZE + TILE_SIZE / 2;
     const playerY = player.y * TILE_SIZE + TILE_SIZE / 2;
 
-    const mouthAngle = Math.sin(player.mouth) * (Math.PI / 4);
+    const mouthAngle = Math.sin(player.mouth) * (Math.PI / 4); // Від 0 до π/4
+
     let baseAngle;
     switch (player.direction) {
-        case 0: baseAngle = 0; break;
-        case 1: baseAngle = Math.PI / 2; break;
-        case 2: baseAngle = Math.PI; break;
-        case 3: baseAngle = 3 * Math.PI / 2; break;
+        case 0: baseAngle = 0; break;           // Вправо
+        case 1: baseAngle = Math.PI / 2; break; // Вниз
+        case 2: baseAngle = Math.PI; break;     // Вліво
+        case 3: baseAngle = 3 * Math.PI / 2; break; // Вгору
     }
 
     const startAngle = baseAngle + mouthAngle;
@@ -408,7 +272,7 @@ function drawGhosts() {
         const ghostX = ghost.x * TILE_SIZE + TILE_SIZE / 2;
         const ghostY = ghost.y * TILE_SIZE + TILE_SIZE / 2;
 
-        ctx.fillStyle = ghost.vulnerable ? '#00BFFF' : ghost.color; // Голубий для уразливих
+        ctx.fillStyle = ghost.color;
         ctx.beginPath();
         ctx.arc(ghostX, ghostY, TILE_SIZE / 2, Math.PI, 0);
         ctx.moveTo(ghostX - TILE_SIZE / 2, ghostY);
@@ -446,10 +310,8 @@ function drawUI() {
         ctx.font = '60px Arial';
         ctx.textAlign = 'center';
         ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2 - 50);
-        ctx.font = '30px Arial';
-        ctx.fillText(`Your Score: ${player.score}`, canvas.width / 2, canvas.height / 2 + 20);
         ctx.font = '20px Arial';
-        ctx.fillText('Press Enter, Space or Tap to Restart', canvas.width / 2, canvas.height / 2 + 80);
+        ctx.fillText('Press Enter, Space or Click to Restart', canvas.width / 2, canvas.height / 2 + 80);
     } else if (gameWon) {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -457,10 +319,8 @@ function drawUI() {
         ctx.font = '60px Arial';
         ctx.textAlign = 'center';
         ctx.fillText('You Won!', canvas.width / 2, canvas.height / 2 - 50);
-        ctx.font = '30px Arial';
-        ctx.fillText(`Your Score: ${player.score}`, canvas.width / 2, canvas.height / 2 + 20);
         ctx.font = '20px Arial';
-        ctx.fillText('Press Enter, Space or Tap to Restart', canvas.width / 2, canvas.height / 2 + 80);
+        ctx.fillText('Press Enter, Space or Click to Restart', canvas.width / 2, canvas.height / 2 + 80);
     }
 }
 
