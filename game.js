@@ -17,6 +17,16 @@ document.body.appendChild(canvas);
 canvas.width = CANVAS_WIDTH;
 canvas.height = CANVAS_HEIGHT;
 
+// Завантаження зображень для Пакмена
+const headImage = new Image();
+headImage.src = 'head.png'; // Верхня щелепа (вправо, вниз, вгору)
+const butImage = new Image();
+butImage.src = 'but.png';   // Нижня щелепа (вправо, вниз, вгору)
+const headbImage = new Image();
+headbImage.src = 'headb.png'; // Верхня щелепа (вліво)
+const butbImage = new Image();
+butbImage.src = 'butb.png';   // Нижня щелепа (вліво)
+
 // Адаптація розміру canvas
 function resizeCanvas() {
     const scale = Math.min(window.innerWidth / CANVAS_WIDTH, window.innerHeight / CANVAS_HEIGHT);
@@ -449,26 +459,40 @@ function drawMap() {
 }
 
 function drawPlayer() {
-    ctx.fillStyle = 'yellow';
-    ctx.beginPath();
     const playerX = player.x * TILE_SIZE + TILE_SIZE / 2;
     const playerY = player.y * TILE_SIZE + TILE_SIZE / 2;
+    const mouthAngle = Math.max(0, Math.sin(player.mouth)) * (Math.PI / 4);
 
-    const mouthAngle = Math.sin(player.mouth) * (Math.PI / 4);
-    let baseAngle;
+    // Вибираємо зображення залежно від напрямку
+    const headImg = player.direction === 2 ? headbImage : headImage;
+    const butImg = player.direction === 2 ? butbImage : butImage;
+
+    ctx.save();
+    ctx.translate(playerX, playerY);
     switch (player.direction) {
-        case 0: baseAngle = 0; break;
-        case 1: baseAngle = Math.PI / 2; break;
-        case 2: baseAngle = Math.PI; break;
-        case 3: baseAngle = 3 * Math.PI / 2; break;
+        case 0: ctx.rotate(0); break;           // Вправо
+        case 1: ctx.rotate(Math.PI / 2); break; // Вниз
+        case 2: ctx.rotate(Math.PI); break;     // Вліво
+        case 3: ctx.rotate(3 * Math.PI / 2); break; // Вгору
     }
 
-    const startAngle = baseAngle + mouthAngle;
-    const endAngle = baseAngle - mouthAngle + 2 * Math.PI;
+    // Нижня щелепа: малюється першою
+    ctx.save();
+    ctx.translate(0, 0);
+    ctx.rotate(mouthAngle);
+    ctx.drawImage(butImg, -TILE_SIZE / 2, 0, TILE_SIZE, TILE_SIZE / 2);
+    ctx.restore();
 
-    ctx.arc(playerX, playerY, TILE_SIZE / 2, startAngle, endAngle);
-    ctx.lineTo(playerX, playerY);
-    ctx.fill();
+    // Верхня щелепа: малюється другою, щоб бути зверху
+    ctx.save();
+    ctx.translate(0, -TILE_SIZE / 2);
+    ctx.translate(0, TILE_SIZE / 2);
+    ctx.rotate(-mouthAngle);
+    ctx.translate(0, -TILE_SIZE / 2);
+    ctx.drawImage(headImg, -TILE_SIZE / 2, 0, TILE_SIZE, TILE_SIZE / 2);
+    ctx.restore();
+
+    ctx.restore();
 }
 
 function drawGhosts() {
@@ -546,6 +570,13 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// Запуск гри
-resetGame();
-gameLoop();
+// Перевірка, чи завантажилися зображення перед запуском гри
+Promise.all([
+    new Promise(resolve => headImage.onload = resolve),
+    new Promise(resolve => butImage.onload = resolve),
+    new Promise(resolve => headbImage.onload = resolve),
+    new Promise(resolve => butbImage.onload = resolve)
+]).then(() => {
+    resetGame();
+    gameLoop();
+}).catch(err => console.error('Failed to load images:', err));
